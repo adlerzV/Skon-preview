@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #15171e;
+    --foreground: #f8f5f9;
+  }
+
+  body {
+    background-color: #15171e;
+    color: #c2c2c4;
+  }
+
+  * {
+    border-radius: 5px;
+    border-color: #313339;
+  }
+}
+
+@layer components {
+  .matn-p {
+    @apply font-bold text-[12px] text-brand-blue md:text-[14px] leading-6;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
