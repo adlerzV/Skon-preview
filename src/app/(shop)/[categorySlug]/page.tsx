@@ -16,17 +16,20 @@ export const dynamic = "force-dynamic";
 export default async function CategoryArchivePage({ params }: CategoryPageProps) {
   const { categorySlug } = params;
 
+  // ۱. گرفتن دیتای اختصاصی این دسته‌بندی از وردپرس
   const categoryData = await getCategoryArchive(categorySlug);
 
   if (!categoryData) {
     notFound();
   }
 
+  // ۲. استخراج نام دسته‌بندی، بنرها و محصولاتِ فیلترشده‌ی همین دسته‌بندی
   const { name, products, banners } = categoryData;
-  const productList = products?.nodes || [];
+  
+  // مطمئن شو که این لیست دقیقاً nodes مربوط به همین رفرنس هست
+  const categoryProducts = products?.nodes || [];
 
   return (
-    // اینجا کلاس‌ها دقیقاً مثل صفحه اصلی (page.tsx) ست شده تا لبه‌ها تراز شوند
     <main className="container mx-auto px-6 max-w-[1600px] pb-12">
       
       <CategoryHero 
@@ -37,10 +40,10 @@ export default async function CategoryArchivePage({ params }: CategoryPageProps)
         } 
       />
 
-      {/* دیگر نیازی به دیو کانتینر اضافه دور گرید نیست چون کامپوننت اصلی محدود شده است */}
+      {/* پاس دادن محصولاتِ فیلتر شده‌ی همین بازی */}
       <ProductGrid 
-        products={productList} 
-        title={`محصولات ${name}`} 
+        products={categoryProducts} 
+        title={`محصولات اختصاصی ${name}`} 
       />
 
     </main>

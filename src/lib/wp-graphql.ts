@@ -80,7 +80,6 @@ export async function fetchGraphQL(query: string, variables: any = {}, tags: str
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables }),
-      // اینجا کش فورس شد که تو پروداکشن خیالت راحت باشه
       cache: cacheMode === 'no-store' ? 'no-store' : 'force-cache'
     };
 
@@ -96,12 +95,10 @@ export async function fetchGraphQL(query: string, variables: any = {}, tags: str
 
     const json = await res.json();
     if (json.errors) {
-      console.error('❌ GraphQL Core Syntax/Schema Errors:', JSON.stringify(json.errors, null, 2));
       throw new Error('GraphQL Execution Error');
     }
     return json.data;
   } catch (error) {
-    console.error('🚨 Network/Server Connection Refused on fetchGraphQL:', error);
     throw error;
   }
 }
@@ -168,15 +165,15 @@ export async function getCategoryArchive(slug: string) {
     const categoryAndProductsPromise = fetchGraphQL(`
       ${CATEGORY_BASIC_FIELDS}
       ${PRODUCT_CARD_FIELDS}
-      query GetCategoryProducts($id: ID!) {
+      query GetCategoryProducts($id: ID!, $categoryIn: [String]) {
         productCategory(id: $id, idType: SLUG) {
           ...CategoryBasicFields
-          products(first: 20, where: { status: "PUBLISH" }) {
-            nodes { ...ProductCardFields }
-          }
+        }
+        products(first: 20, where: { categoryIn: $categoryIn, status: "PUBLISH" }) {
+          nodes { ...ProductCardFields }
         }
       }
-    `, { id: slug }, ['products', `category-${slug}`]); 
+    `, { id: slug, categoryIn: [slug] }, ['products', `category-${slug}`]); 
 
     const bannersPromise = fetchGraphQL(`
       ${BANNER_FIELDS}
@@ -195,7 +192,7 @@ export async function getCategoryArchive(slug: string) {
       ...categoryData.productCategory,
       banners: bannersData?.productCategory?.banners || [],
       products: {
-        nodes: formatProducts(categoryData.productCategory.products?.nodes || [])
+        nodes: formatProducts(categoryData.products?.nodes || [])
       }
     };
   } catch (e) {
