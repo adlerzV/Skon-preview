@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ProductNode } from "@/lib/wp-graphql";
 
 const formatToPersianDigits = (num: number) => {
   return num.toLocaleString("fa-IR");
 };
 
-export default function ProductCard({ product }: { product: any }) {
-  const category = product.productCategories?.nodes[0];
+export default function ProductCard({ product }: { product: ProductNode }) {
+  const category = product.productCategories?.nodes?.[0];
   const categorySlug = category?.slug || "uncategorized";
   const categoryName = category?.name || "بدون دسته";
   const categoryLogo = category?.image?.sourceUrl;
@@ -20,9 +21,9 @@ export default function ProductCard({ product }: { product: any }) {
     regularMinPrice > currentMinPrice;
 
   const badges = [];
-  const productDate = new Date(product.date).getTime();
+  const productDate = product.date ? new Date(product.date).getTime() : 0;
   const now = new Date().getTime();
-  const isNew = now - productDate < 15 * 24 * 60 * 60 * 1000;
+  const isNew = productDate > 0 && (now - productDate < 15 * 24 * 60 * 60 * 1000);
 
   if (isActualSale) {
     badges.push({ text: "حراج", color: "bg-brand-sabz" });
@@ -51,7 +52,7 @@ export default function ProductCard({ product }: { product: any }) {
         {product.image?.sourceUrl ? (
           <Image
             src={product.image.sourceUrl}
-            alt={product.image.altText || product.name}
+            alt={product.name}
             fill
             className="object-cover transition-all duration-200 ease-in-out brightness-[0.99] group-hover:brightness-110"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -111,16 +112,16 @@ export default function ProductCard({ product }: { product: any }) {
                   <div className="flex flex-col">
                     <span className="text-[#75dd04] font-bold text-base md:text-[17px] flex items-center gap-1.5">
                       {formatToPersianDigits(currentMinPrice)}
-                      <span className="text-[12px] font-normal text-white">ریال</span>
+                      <span className="text-[12px] font-normal text-white">تومان</span>
                     </span>
                     <del className="text-[#8e98b0] text-[12px] opacity-70 mt-0.5 inline-block w-fit">
-                      {formatToPersianDigits(regularMinPrice)}
+                      {formatToPersianDigits(regularMinPrice!)}
                     </del>
                   </div>
                 ) : (
                   <span className="text-white font-bold text-base md:text-[17px] flex items-center gap-1.5">
                     {formatToPersianDigits(currentMinPrice)}
-                    <span className="text-[12px] font-normal text-[#8e98b0]">ریال</span>
+                    <span className="text-[12px] font-normal text-[#8e98b0]">تومان</span>
                   </span>
                 )}
               </>

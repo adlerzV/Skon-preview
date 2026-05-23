@@ -1,20 +1,11 @@
-// components/MiniSearchCard.tsx
+// فایل: src/components/MiniSearchCard.tsx
 import Image from "next/image";
 import Link from "next/link";
+import { ProductNode } from "@/lib/wp-graphql";
 
-interface ProductMini {
-  slug: string;
-  name: string;
-  price?: string | null;
-  salePrice?: string | null;
-  regularPrice?: string | null;
-  image?: { sourceUrl?: string };
-  productCategories?: { nodes: { name: string }[] };
-}
-
-export default function MiniSearchCard({ product }: { product: ProductMini }) {
+export default function MiniSearchCard({ product }: { product: ProductNode }) {
   const categoryName = product.productCategories?.nodes?.[0]?.name || "دسته بندی نامشخص";
-  const isOnSale = Boolean(product.salePrice && product.salePrice !== product.regularPrice);
+  const isOnSale = Boolean(product.parsedRegularPrice && product.parsedPrice && product.parsedRegularPrice > product.parsedPrice);
 
   return (
     <Link 
@@ -47,14 +38,18 @@ export default function MiniSearchCard({ product }: { product: ProductMini }) {
         <span className="text-m_khonsa text-[12px] block truncate">
           {categoryName}
         </span>
-        <h4 className="text-white text-[14px]  truncate group-hover:text-brand-blue transition-colors">
+        <h4 className="text-white text-[14px] truncate group-hover:text-brand-blue transition-colors">
           {product.name}
         </h4>
-        {product.price && (
-          <div 
-             className="mt-0.5 text-[12px] [&>span]:text-white [&>del]:text-brand-m_khonsa [&>del]:mr-1 [&>del]:inline-block [&>ins]:no-underline [&>ins>span]:text-[#ffb400]"
-             dangerouslySetInnerHTML={{ __html: product.price }}
-          />
+        {product.parsedPrice ? (
+          <div className="mt-0.5 text-[12px] flex items-center gap-1">
+            <span className="text-[#ffb400] font-bold">{product.parsedPrice.toLocaleString("fa-IR")} تومان</span>
+            {isOnSale && (
+              <del className="text-brand-m_khonsa opacity-70">{product.parsedRegularPrice?.toLocaleString("fa-IR")}</del>
+            )}
+          </div>
+        ) : (
+          <span className="mt-0.5 text-[12px] text-brand-m_khonsa">ناموجود</span>
         )}
       </div>
     </Link>

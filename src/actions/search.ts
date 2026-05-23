@@ -1,3 +1,4 @@
+// فایل: src/actions/search.ts
 "use server"
 
 import { fetchGraphQL, formatProducts, PRODUCT_CARD_FIELDS } from "@/lib/wp-graphql";
@@ -23,7 +24,7 @@ export async function searchProductsByKeyword(keyword: string) {
       'no-store'
     );
 
-    return formatProducts(data?.products?.nodes || []);
+    return formatProducts(data?.products?.nodes || [], true);
   } catch (error) {
     return [];
   }
