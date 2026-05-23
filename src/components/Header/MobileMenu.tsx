@@ -58,11 +58,16 @@ export default function MobileMenu({ cartCount }: { cartCount: number }) {
         >
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
-
         <Link href="/" className="flex items-center justify-center" aria-label="Home">
-          <div className="relative w-[100px] h-[30px]">
-            <Image src="/images/arena2battleLogo.webp" alt="Arena 2 Battle" fill className="object-contain" priority />
-          </div>
+          <Image 
+            src="/images/arena2battleLogo.webp" 
+            alt="Arena 2 Battle" 
+            width={100} 
+            height={30} 
+            className="h-[30px] w-auto object-contain" 
+            priority 
+            style={{ width: 'auto', height: 'auto' }}
+          />
         </Link>
 
         <div className="flex items-center gap-0.5 h-full">

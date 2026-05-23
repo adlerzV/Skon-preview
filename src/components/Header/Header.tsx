@@ -35,8 +35,7 @@ export default async function Header() {
               height={40}
               className="h-10 w-auto object-contain"
               priority
-              sizes="100px"
-              style={{ height: 'auto' }}
+              style={{ width: 'auto', height: 'auto' }} 
             />
           </Link>
           <DesktopNavLinks />

@@ -6,15 +6,15 @@ import ProductGrid from "@/components/ProductGrid";
 import { notFound } from "next/navigation";
 
 interface CategoryPageProps {
-  params: {
+  params: Promise<{
     categorySlug: string;
-  };
+  }>;
 }
 
 export const dynamic = "force-dynamic";
 
 export default async function CategoryArchivePage({ params }: CategoryPageProps) {
-  const { categorySlug } = params;
+  const { categorySlug } = await params;
 
   // ۱. گرفتن دیتای اختصاصی این دسته‌بندی از وردپرس
   const categoryData = await getCategoryArchive(categorySlug);
@@ -22,11 +22,8 @@ export default async function CategoryArchivePage({ params }: CategoryPageProps)
   if (!categoryData) {
     notFound();
   }
-
-  // ۲. استخراج نام دسته‌بندی، بنرها و محصولاتِ فیلترشده‌ی همین دسته‌بندی
   const { name, products, banners } = categoryData;
   
-  // مطمئن شو که این لیست دقیقاً nodes مربوط به همین رفرنس هست
   const categoryProducts = products?.nodes || [];
 
   return (
