@@ -1,51 +1,39 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { VariationCard } from "@/lib/wp-graphql";
 
 interface DeliveryAndPriceProps {
-  selectedVariation: VariationCard | null;
+  selectedVariation: VariationCard;
 }
 
 export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPriceProps) {
-  const [deliveryType, setDeliveryType] = useState<"direct" | "gift" | "code">("direct");
+  // پیش‌فرض نال است تا کاربر مجبور به انتخاب شود
+  const [deliveryType, setDeliveryType] = useState<"direct" | "gift" | "code" | null>(null);
   
-  const [battleTag, setBattleTag] = useState("");
-  const [accountEmail, setAccountEmail] = useState("");
+  const [accountIdentifier, setAccountIdentifier] = useState(""); // ایمیل یا یوزرنیم
   const [accountPassword, setAccountPassword] = useState("");
+  const [battleTag, setBattleTag] = useState("");
   
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const isDirectDisabled = !selectedVariation || !selectedVariation.parsedPrice;
-  const isGiftDisabled = !selectedVariation || selectedVariation.parsedGiftPrice === "disabled";
-  const isCodeDisabled = !selectedVariation || selectedVariation.parsedCodePrice === "disabled";
+  const isDirectDisabled = !selectedVariation.parsedPrice;
+  const isGiftDisabled = selectedVariation.parsedGiftPrice === "disabled";
+  const isCodeDisabled = selectedVariation.parsedCodePrice === "disabled";
 
+  // ریست کردن متد تحویل وقتی متغیر اصلی عوض میشه و متد قبلی در متغیر جدید ناموجوده
   useEffect(() => {
-    if (!isDirectDisabled) {
-      setDeliveryType("direct");
-    } else if (!isGiftDisabled) {
-      setDeliveryType("gift");
-    } else if (!isCodeDisabled) {
-      setDeliveryType("code");
-    }
-    
-    setBattleTag("");
-    setAccountEmail("");
-    setAccountPassword("");
-    setVerifyStatus("idle");
-  }, [selectedVariation, isDirectDisabled, isGiftDisabled, isCodeDisabled]);
-
-  if (!selectedVariation) {
-    return (
-      <div className="text-neutral-550 text-sm bg-brand-surface p-4 border border-neutral-800">
-        لطفاً ابتدا یک ویژگی را انتخاب کنید.
-      </div>
-    );
-  }
+    if (deliveryType === "direct" && isDirectDisabled) setDeliveryType(null);
+    if (deliveryType === "gift" && isGiftDisabled) setDeliveryType(null);
+    if (deliveryType === "code" && isCodeDisabled) setDeliveryType(null);
+  }, [selectedVariation, isDirectDisabled, isGiftDisabled, isCodeDisabled, deliveryType]);
 
   const currentPrice = 
     deliveryType === "gift" ? selectedVariation.parsedGiftPrice : 
     deliveryType === "code" ? selectedVariation.parsedCodePrice : 
-    selectedVariation.parsedPrice;
+    deliveryType === "direct" ? selectedVariation.parsedPrice : null;
 
   const handleVerifyBattleTag = () => {
     if (!battleTag.includes("#")) {
@@ -54,178 +42,224 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
     }
     setIsVerifying(true);
     setVerifyStatus("idle");
-    
+    // اینجا در آینده چک کردن جیسون رو پیاده‌سازی می‌کنی
     setTimeout(() => {
       setIsVerifying(false);
       setVerifyStatus("success");
     }, 1200);
   };
 
-  const isAddToCartDisabled = 
-    typeof currentPrice !== "number" || 
-    (deliveryType === "gift" && verifyStatus !== "success") ||
-    (deliveryType === "direct" && (!accountEmail || !accountPassword));
+  // ولیدیشن فوق‌العاده سخت‌گیرانه برای فعال شدن دکمه خرید
+  const isFormValid = () => {
+    if (!deliveryType) return false;
+    if (deliveryType === "direct") return accountIdentifier.trim().length > 3 && accountPassword.length > 0;
+    if (deliveryType === "gift") return verifyStatus === "success";
+    if (deliveryType === "code") return true;
+    return false;
+  };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
+    if (!isFormValid()) return;
+    setIsAddingToCart(true);
+    
     const cartItemData = {
       productDetailId: selectedVariation.databaseId,
       deliveryMethod: deliveryType,
       customFields: 
         deliveryType === "gift" ? { battleTag } : 
-        deliveryType === "direct" ? { email: accountEmail, password: accountPassword } : 
+        deliveryType === "direct" ? { identifier: accountIdentifier, password: accountPassword } : 
         null,
       price: currentPrice
     };
     
-    console.log("Adding to Cart Data Structure:", cartItemData);
-    alert("محصول با موفقیت به سبد خرید فرستاده شد.");
+    console.log("Adding to cart:", cartItemData);
+    setTimeout(() => setIsAddingToCart(false), 1000); // شبیه‌سازی لودینگ
   };
 
   return (
-    <div className="flex flex-col gap-5 bg-brand-surface p-4 md:p-5 border border-neutral-800">
+    <div className="flex flex-col gap-6 mt-2">
       
+      {/* فقط کارت‌ها بدون بک‌گراند کلی */}
       <div className="flex flex-col gap-3">
-        <span className="text-[#8e98b0] text-[13px] font-bold uppercase tracking-wide">
-          روش تحویل محصول:
+        <span className="text-brand-surface_m text-[13px] font-bold uppercase tracking-wide">
+          مسیر تحویل محصول:
         </span>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#0b0c10] p-1 border border-neutral-850">
-          <button
-            type="button"
-            disabled={isDirectDisabled}
-            onClick={() => setDeliveryType("direct")}
-            className={`py-3 text-center text-sm font-bold transition-all duration-200 ${
-              isDirectDisabled
-                ? "opacity-30 cursor-not-allowed text-neutral-600 line-through"
-                : deliveryType === "direct"
-                ? "bg-brand-surface border border-neutral-850 text-white font-black"
-                : "text-[#8e98b0] hover:text-white"
-            }`}
-          >
-            خرید مستقیم
-          </button>
+        <div className="grid grid-cols-3 gap-3">
+          
+          <div className="relative group flex flex-col">
+            <button
+              type="button"
+              disabled={isDirectDisabled}
+              onClick={() => setDeliveryType("direct")}
+              className={`h-[90px] rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all duration-200 ${
+                isDirectDisabled
+                  ? "opacity-30 cursor-not-allowed border-transparent bg-brand-surface"
+                  : deliveryType === "direct"
+                  ? "bg-brand-blue/10 border-brand-blue text-brand-blue shadow-[0_0_10px_rgba(0,116,224,0.15)]"
+                  : "bg-brand-surface border-brand-surface_hover text-brand-m_khonsa hover:border-brand-m_khonsa"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span className="font-bold text-xs">مستقیم</span>
+            </button>
+            <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 bg-brand-surface border border-brand-surface_hover p-3 rounded-lg text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 shadow-xl pointer-events-none">
+              <span className="block text-[13px] font-bold text-brand-blue mb-1">اقتصادی‌ترین متد</span>
+              <span className="text-[11px] text-brand-m_khonsa leading-relaxed">نیازمند ورود موقت ما به اکانت شما.</span>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-brand-surface_hover"></div>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            disabled={isGiftDisabled}
-            onClick={() => setDeliveryType("gift")}
-            className={`py-3 text-center text-sm font-bold transition-all duration-200 ${
-              isGiftDisabled
-                ? "opacity-30 cursor-not-allowed text-neutral-600 line-through"
-                : deliveryType === "gift"
-                ? "bg-brand-surface border border-neutral-850 text-white font-black"
-                : "text-[#8e98b0] hover:text-white"
-            }`}
-          >
-            تحویل به‌صورت گیفت
-          </button>
+          <div className="relative group flex flex-col">
+            <button
+              type="button"
+              disabled={isGiftDisabled}
+              onClick={() => setDeliveryType("gift")}
+              className={`h-[90px] rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all duration-200 ${
+                isGiftDisabled
+                  ? "opacity-30 cursor-not-allowed border-transparent bg-brand-surface"
+                  : deliveryType === "gift"
+                  ? "bg-brand-zard/10 border-brand-zard text-brand-zard shadow-[0_0_10px_rgba(255,180,0,0.15)]"
+                  : "bg-brand-surface border-brand-surface_hover text-brand-m_khonsa hover:border-brand-m_khonsa"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect width="20" height="5" x="2" y="7"/><line x1="12" x2="12" y1="22" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+              <span className="font-bold text-xs">گیفت</span>
+            </button>
+            <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 bg-brand-surface border border-brand-surface_hover p-3 rounded-lg text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 shadow-xl pointer-events-none">
+              <span className="block text-[13px] font-bold text-brand-zard mb-1">ارسال به دوستان</span>
+              <span className="text-[11px] text-brand-m_khonsa leading-relaxed">نیازمند گذشت ۳ روز از ادد فرند بودن.</span>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-brand-surface_hover"></div>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            disabled={isCodeDisabled}
-            onClick={() => setDeliveryType("code")}
-            className={`py-3 text-center text-sm font-bold transition-all duration-200 ${
-              isCodeDisabled
-                ? "opacity-30 cursor-not-allowed text-neutral-600 line-through"
-                : deliveryType === "code"
-                ? "bg-brand-surface border border-neutral-850 text-white font-black"
-                : "text-[#8e98b0] hover:text-white"
-            }`}
-          >
-            کد مستقیم (آنی)
-          </button>
+          <div className="relative group flex flex-col">
+            <button
+              type="button"
+              disabled={isCodeDisabled}
+              onClick={() => setDeliveryType("code")}
+              className={`h-[90px] rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all duration-200 ${
+                isCodeDisabled
+                  ? "opacity-30 cursor-not-allowed border-transparent bg-brand-surface"
+                  : deliveryType === "code"
+                  ? "bg-brand-sabz/10 border-brand-sabz text-brand-sabz shadow-[0_0_10px_rgba(117,221,4,0.15)]"
+                  : "bg-brand-surface border-brand-surface_hover text-brand-m_khonsa hover:border-brand-m_khonsa"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+              <span className="font-bold text-xs">کد اصلی</span>
+            </button>
+            <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-48 bg-brand-surface border border-brand-surface_hover p-3 rounded-lg text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 shadow-xl pointer-events-none">
+              <span className="block text-[13px] font-bold text-brand-sabz mb-1">تحویل در لحظه</span>
+              <span className="text-[11px] text-brand-m_khonsa leading-relaxed">کد فعال‌سازی بلافاصله تحویل می‌گردد.</span>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-brand-surface_hover"></div>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {deliveryType === "direct" && (
-        <div className="flex flex-col gap-3 p-4 bg-[#0b0c10] border border-neutral-850 animate-in fade-in duration-200">
-          <p className="text-xs text-brand-blue font-bold">
-            🔑 برای انجام سفارش، مشخصات اکانت شما جهت ورود نیاز است:
-          </p>
-          <div className="flex flex-col gap-2">
-            <input
-              type="email"
-              value={accountEmail}
-              onChange={(e) => setAccountEmail(e.target.value)}
-              placeholder="ایمیل اکانت"
-              className="w-full bg-brand-surface border border-neutral-800 p-3 text-sm text-white focus:outline-none focus:border-neutral-500 text-left"
-              dir="ltr"
-            />
-            <input
-              type="password"
-              value={accountPassword}
-              onChange={(e) => setAccountPassword(e.target.value)}
-              placeholder="رمز عبور اکانت"
-              className="w-full bg-brand-surface border border-neutral-800 p-3 text-sm text-white focus:outline-none focus:border-neutral-500 text-left"
-              dir="ltr"
-            />
-          </div>
-        </div>
-      )}
-
-      {deliveryType === "gift" && (
-        <div className="flex flex-col gap-3 p-4 bg-[#0b0c10] border border-neutral-850 animate-in fade-in duration-200">
-          <p className="text-xs text-brand-blue font-bold">
-            💡 لطفاً بتل‌تگ خود را جهت بررسی لیست فرندها وارد کنید:
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={battleTag}
-              onChange={(e) => setBattleTag(e.target.value)}
-              placeholder="Example#1234"
-              className="flex-1 bg-brand-surface border border-neutral-800 p-3 text-sm text-white focus:outline-none focus:border-neutral-500 tracking-wider text-left font-mono"
-            />
-            <button
-              type="button"
-              onClick={handleVerifyBattleTag}
-              disabled={isVerifying || !battleTag}
-              className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-xs font-bold text-white px-4 border border-neutral-700 transition-colors"
-            >
-              {isVerifying ? "در حال بررسی..." : "بررسی لایو"}
-            </button>
-          </div>
+      {/* فرم‌های داینامیک */}
+      {deliveryType && (
+        <div className="bg-brand-surface p-4 rounded-xl border border-brand-surface_hover animate-in fade-in duration-300">
           
-          {verifyStatus === "success" && (
-            <span className="text-xs text-[#75dd04] font-medium">✓ بتل‌تگ تایید شد. شما در لیست فرندها قرار دارید!</span>
+          {deliveryType === "direct" && (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-brand-blue font-bold">
+                🔑 اطلاعات اکانت جهت خرید مستقیم:
+              </p>
+              <input
+                type="text"
+                value={accountIdentifier}
+                onChange={(e) => setAccountIdentifier(e.target.value)}
+                placeholder="ایمیل یا نام کاربری اکانت"
+                className="w-full bg-brand-bg border border-brand-surface_hover p-3 rounded-lg text-sm text-brand-active focus:outline-none focus:border-brand-blue transition-colors text-left"
+                dir="ltr"
+              />
+              <input
+                type="password"
+                value={accountPassword}
+                onChange={(e) => setAccountPassword(e.target.value)}
+                placeholder="رمز عبور اکانت"
+                className="w-full bg-brand-bg border border-brand-surface_hover p-3 rounded-lg text-sm text-brand-active focus:outline-none focus:border-brand-blue transition-colors text-left"
+                dir="ltr"
+              />
+            </div>
           )}
-          {verifyStatus === "error" && (
-            <span className="text-xs text-[#ff4e4e] font-medium">⚠️ فرمت بتل‌تگ اشتباه است. (مثال: Name#1234)</span>
+
+          {deliveryType === "gift" && (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-brand-zard font-bold">
+                💡 بتل‌تگ خود را جهت بررسی وارد کنید:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={battleTag}
+                  onChange={(e) => {
+                    setBattleTag(e.target.value);
+                    setVerifyStatus("idle");
+                  }}
+                  placeholder="Example#1234"
+                  className="flex-1 bg-brand-bg border border-brand-surface_hover p-3 rounded-lg text-sm text-brand-active focus:outline-none focus:border-brand-zard font-mono text-left"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyBattleTag}
+                  disabled={isVerifying || !battleTag}
+                  className="bg-brand-active hover:bg-brand-active/90 disabled:opacity-50 text-xs font-bold text-brand-bg px-4 rounded-lg transition-colors"
+                >
+                  {isVerifying ? "بررسی..." : "چک کن"}
+                </button>
+              </div>
+              
+              {verifyStatus === "success" && (
+                <span className="text-xs text-brand-sabz font-medium mt-1">✓ شما در لیست فرندهای ما قرار دارید!</span>
+              )}
+              {verifyStatus === "error" && (
+                <span className="text-xs text-red-500 font-medium mt-1">⚠️ فرمت بتل‌تگ اشتباه است. (مثال صحیح: Name#1234)</span>
+              )}
+            </div>
+          )}
+
+          {deliveryType === "code" && (
+            <div className="py-2 text-center flex flex-col items-center gap-2">
+              <span className="text-3xl">🚀</span>
+              <p className="text-xs text-brand-sabz font-bold leading-relaxed">
+                کد اورجینال بلافاصله پس از پرداخت<br/>در پنل کاربری نمایش داده می‌شود.
+              </p>
+            </div>
           )}
         </div>
       )}
 
-      {deliveryType === "code" && (
-        <div className="p-4 bg-[#0b0c10] border border-neutral-850 animate-in fade-in duration-200">
-          <p className="text-xs text-[#75dd04] font-bold">
-            🚀 تحویل این متد آنی است! کد فعال‌سازی بلافاصله پس از پرداخت در فاکتور شما نمایش داده می‌شود.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-neutral-800/60">
-        <div className="flex flex-col gap-1">
-          <span className="text-[#8e98b0] text-[11px] font-medium">قیمت نهایی پرداخت:</span>
-          {typeof currentPrice === "number" ? (
-            <span className="text-[#75dd04] font-black text-xl md:text-2xl flex items-center gap-1.5">
-              {currentPrice.toLocaleString("fa-IR")}
-              <span className="text-[13px] font-normal text-white">تومان</span>
-            </span>
+      {/* بخش قیمت و دکمه خرید */}
+      <div className="mt-auto flex flex-col gap-4">
+        <div className="flex justify-between items-end bg-brand-surface p-4 rounded-xl border border-brand-surface_hover">
+          <span className="text-sm text-brand-surface_m font-medium">مبلغ نهایی:</span>
+          {deliveryType === null ? (
+             <span className="text-sm text-brand-surface_m">ابتدا روش تحویل را انتخاب کنید</span>
+          ) : typeof currentPrice === "number" ? (
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl md:text-3xl font-black text-brand-active">{currentPrice.toLocaleString("fa-IR")}</span>
+              <span className="text-xs text-brand-surface_m">تومان</span>
+            </div>
           ) : (
-            <span className="text-[#ff4e4e] font-bold text-base">ناموجود</span>
+            <span className="text-red-500 font-bold text-lg">ناموجود</span>
           )}
         </div>
 
         <button
           type="button"
           onClick={handleAddToCart}
-          disabled={isAddToCartDisabled}
-          className={`px-8 py-3.5 font-bold text-center text-sm transition-all duration-200 ${
-            !isAddToCartDisabled
-              ? "bg-white text-black hover:bg-neutral-200 cursor-pointer"
-              : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+          disabled={!isFormValid() || isAddingToCart}
+          className={`w-full py-4 rounded-xl font-bold text-center text-sm transition-all duration-200 ${
+            isFormValid()
+              ? "bg-brand-blue text-brand-active hover:bg-[#0062d1] shadow-[0_0_15px_rgba(0,116,224,0.3)]"
+              : "bg-brand-surface_hover text-brand-m_khonsa cursor-not-allowed"
           }`}
         >
-          افزودن به سبد خرید
+          {isAddingToCart ? "در حال پردازش..." : "افزودن به سبد خرید"}
         </button>
       </div>
 

@@ -1,6 +1,5 @@
-// src/app/api/revalidate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,11 +22,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (Array.isArray(tag)) {
-      tag.forEach(t => revalidateTag(t));
-    } else {
-      revalidateTag(tag);
-    }
+    const tagsArray = Array.isArray(tag) ? tag : [tag];
+
+    tagsArray.forEach(t => {
+      try {
+        (revalidateTag as any)(t, 'default');
+      } catch (e) {
+        try {
+          (revalidateTag as any)(t);
+        } catch (err) {}
+      }
+
+      if (t === 'products') {
+        revalidatePath('/', 'layout');
+      }
+    });
 
     return NextResponse.json({ 
       revalidated: true, 

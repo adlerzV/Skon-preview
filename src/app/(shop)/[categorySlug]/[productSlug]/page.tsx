@@ -4,27 +4,37 @@ import { getProductDetail } from "@/lib/wp-graphql";
 import ProductPageClient from "@/components/product/ProductPageClient";
 
 interface ProductPageProps {
-  params: {
-    slug: string;
-  };
-  searchParams: {
+  params: Promise<{
+    categorySlug: string;
+    productSlug?: string;
+    slug?: string;
+  }>;
+  searchParams: Promise<{
     edition?: string;
-  };
+  }>;
 }
 
 export default async function ProductPage({ params, searchParams }: ProductPageProps) {
-  const { slug } = params;
-  const product = await getProductDetail(slug);
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const currentSlug = resolvedParams.productSlug || resolvedParams.slug;
+
+  if (!currentSlug) {
+    notFound();
+  }
+
+  const product = await getProductDetail(currentSlug);
 
   if (!product) {
     notFound();
   }
 
   return (
-    <main className="container mx-auto px-6 py-12 max-w-[1400px]">
+    <main className="container mx-auto px-6 py-12 max-w-[1600px]">
       <ProductPageClient 
         product={product} 
-        initialEdition={searchParams.edition} 
+        initialEdition={resolvedSearchParams.edition} 
       />
     </main>
   );
