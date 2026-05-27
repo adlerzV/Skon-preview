@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { ProductNode, VariationCard } from "@/lib/wp-graphql";
 import DeliveryAndPrice from "@/components/product/DeliveryAndPrice";
@@ -14,6 +14,7 @@ interface Props {
 export default function ProductPageClient({ product, initialEdition }: Props) {
   const variations = product.variationCards || [];
   
+  // دسته‌بندی ویژگی‌ها
   const groupedAttributes = useMemo(() => {
     const map = new Map<string, Set<string>>();
     variations.forEach(v => {
@@ -43,6 +44,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     }));
   }, [variations]);
 
+  // چک کردن وضعیت موجودی متغیر
   const isVariationInStock = (v: VariationCard) => {
     return (
       (v.parsedPrice !== null && v.parsedPrice !== undefined) ||
@@ -51,55 +53,75 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     );
   };
 
+  // بررسی معتبر و موجود بودن یک ترکیب تا یک شاخه مشخص
+  const isCombinationValid = (testAttrs: Record<string, string>, upToGroupIndex: number) => {
+    return variations.some(v => {
+      if (!isVariationInStock(v)) return false;
+      
+      for (let j = 0; j <= upToGroupIndex; j++) {
+        const group = groupedAttributes[j];
+        const expectedValue = testAttrs[group.name];
+        const hasAttr = v.attributes?.some(a => a.name === group.name && a.value === expectedValue);
+        if (!hasAttr) return false;
+      }
+      return true;
+    });
+  };
+
+  // پیدا کردن اولین ترکیب ویژگی‌های موجود و معتبر
   const findFirstValidAttributes = (targetEdition?: string) => {
-    if (variations.length === 0 || groupedAttributes.length === 0) return {};
-    
-    let baseVar = variations.find(v => isVariationInStock(v));
-    
-    if (targetEdition) {
-      const matchEdition = variations.find(v => 
-        isVariationInStock(v) && v.attributes?.some(a => a.value === targetEdition)
-      );
-      if (matchEdition) baseVar = matchEdition;
+    const attrs: Record<string, string> = {};
+    if (variations.length === 0 || groupedAttributes.length === 0) return attrs;
+
+    // پیدا کردن یک متغیر مبنا که موجود باشه
+    let baseVar = variations.find(v => {
+      if (!isVariationInStock(v)) return false;
+      if (targetEdition) {
+        return v.attributes?.some(a => a.value === targetEdition);
+      }
+      return true;
+    });
+
+    // اگه با ادیشن مدنظر متغیر موجودی نبود، اولین متغیر موجود کل لیست رو بردار
+    if (!baseVar && targetEdition) {
+      baseVar = variations.find(v => isVariationInStock(v));
     }
 
+    // اگه کلا هیچی موجود نبود fallback به اولین متغیر
     if (!baseVar) {
       baseVar = variations[0];
     }
 
-    const attrs: Record<string, string> = {};
-    if (groupedAttributes[0]) {
-      const firstGroup = groupedAttributes[0];
-      const matchedAttr = baseVar.attributes?.find(a => a.name === firstGroup.name);
-      const firstValue = matchedAttr ? matchedAttr.value : firstGroup.values[0];
-      attrs[firstGroup.name] = firstValue;
-
-      for (let i = 1; i < groupedAttributes.length; i++) {
-        const currentGroup = groupedAttributes[i];
-        const validNextVar = variations.find(v => 
-          isVariationInStock(v) &&
-          v.attributes?.some(a => a.name === firstGroup.name && a.value === firstValue) &&
-          v.attributes?.some(a => a.name === currentGroup.name)
-        );
-        
-        if (validNextVar) {
-          const nextAttr = validNextVar.attributes?.find(a => a.name === currentGroup.name);
-          if (nextAttr) attrs[currentGroup.name] = nextAttr.value;
-        } else {
-          attrs[currentGroup.name] = currentGroup.values[0];
-        }
-      }
-      return attrs;
+    if (baseVar && baseVar.attributes) {
+      baseVar.attributes.forEach(a => {
+        attrs[a.name] = a.value;
+      });
     }
 
-    baseVar.attributes?.forEach(a => { attrs[a.name] = a.value });
+    // مطمئن شدن از اینکه همه شاخه‌ها مقدار دارن
+    groupedAttributes.forEach(group => {
+      if (!attrs[group.name] && group.values.length > 0) {
+        attrs[group.name] = group.values[0];
+      }
+    });
+
     return attrs;
   };
 
+  // مقداردهی اولیه بدون تاثیر مخرب روی هایدریشن سرور
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
-    return findFirstValidAttributes(initialEdition);
+    return findFirstValidAttributes();
   });
 
+  // اعمال هوشمند initialEdition پس از ماونت کلاینت
+  useEffect(() => {
+    if (initialEdition) {
+      setSelectedAttrs(findFirstValidAttributes(initialEdition));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEdition]);
+
+  // متغیر نهایی انتخاب شده برای نمایش قیمت و تحویل
   const selectedVar = useMemo(() => {
     if (variations.length === 0) return null;
     const exactMatch = variations.find(v => {
@@ -126,45 +148,27 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
   const categoryName = category?.name || "بدون دسته";
   const categoryImage = category?.image?.sourceUrl;
 
+  // مدیریت کلیک روی اتریبیوت‌ها با تغییر خودکار شاخه‌های ناهمخوان بعدی به اولین گزینه موجود
   const handleAttrSelect = (name: string, val: string) => {
     setSelectedAttrs(prev => {
       const newAttrs = { ...prev, [name]: val };
       const clickedGroupIndex = groupedAttributes.findIndex(g => g.name === name);
       
+      // اصلاح آبشاری شاخه‌های بعدی در صورت ناموجود شدن ترکیب
       for (let i = clickedGroupIndex + 1; i < groupedAttributes.length; i++) {
         const nextGroup = groupedAttributes[i];
-        const currentSelectedValueForNext = newAttrs[nextGroup.name];
+        const currentSelectedValue = newAttrs[nextGroup.name];
         
-        const isCurrentValid = variations.some(v => {
-          const hasNextValue = v.attributes?.some(a => a.name === nextGroup.name && a.value === currentSelectedValueForNext);
-          if (!hasNextValue) return false;
-          
-          const matchesAllPrevious = groupedAttributes.slice(0, i).every(pGroup => {
-            return v.attributes?.some(a => a.name === pGroup.name && a.value === newAttrs[pGroup.name]);
-          });
-          if (!matchesAllPrevious) return false;
-          
-          return isVariationInStock(v);
-        });
+        const isCurrentValid = currentSelectedValue && isCombinationValid(newAttrs, i);
         
         if (!isCurrentValid) {
+          // پیدا کردن اولین گزینه‌ای که ترکیب رو موجود نگه می‌داره
           const fallbackValue = nextGroup.values.find(vVal => {
-            return variations.some(v => {
-              const hasVal = v.attributes?.some(a => a.name === nextGroup.name && a.value === vVal);
-              if (!hasVal) return false;
-              
-              const matchesAllPrevious = groupedAttributes.slice(0, i).every(pGroup => {
-                return v.attributes?.some(a => a.name === pGroup.name && a.value === newAttrs[pGroup.name]);
-              });
-              if (!matchesAllPrevious) return false;
-              
-              return isVariationInStock(v);
-            });
+            const tempAttrs = { ...newAttrs, [nextGroup.name]: vVal };
+            return isCombinationValid(tempAttrs, i);
           });
           
-          if (fallbackValue) {
-            newAttrs[nextGroup.name] = fallbackValue;
-          }
+          newAttrs[nextGroup.name] = fallbackValue || nextGroup.values[0];
         }
       }
       return newAttrs;
