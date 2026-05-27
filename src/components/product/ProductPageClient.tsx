@@ -43,28 +43,72 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     }));
   }, [variations]);
 
-  const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
-    if (variations.length === 0) return {};
-    let initialVar = variations[0];
-    if (initialEdition) {
-      const matched = variations.find(v => v.attributes?.some(a => a.value === initialEdition));
-      if (matched) initialVar = matched;
+  const isVariationInStock = (v: VariationCard) => {
+    return (
+      (v.parsedPrice !== null && v.parsedPrice !== undefined) ||
+      (v.parsedGiftPrice !== "disabled" && v.parsedGiftPrice != null) ||
+      (v.parsedCodePrice !== "disabled" && v.parsedCodePrice != null)
+    );
+  };
+
+  const findFirstValidAttributes = (targetEdition?: string) => {
+    if (variations.length === 0 || groupedAttributes.length === 0) return {};
+    
+    let baseVar = variations.find(v => isVariationInStock(v));
+    
+    if (targetEdition) {
+      const matchEdition = variations.find(v => 
+        isVariationInStock(v) && v.attributes?.some(a => a.value === targetEdition)
+      );
+      if (matchEdition) baseVar = matchEdition;
     }
+
+    if (!baseVar) {
+      baseVar = variations[0];
+    }
+
     const attrs: Record<string, string> = {};
-    initialVar.attributes?.forEach(a => { attrs[a.name] = a.value });
+    if (groupedAttributes[0]) {
+      const firstGroup = groupedAttributes[0];
+      const matchedAttr = baseVar.attributes?.find(a => a.name === firstGroup.name);
+      const firstValue = matchedAttr ? matchedAttr.value : firstGroup.values[0];
+      attrs[firstGroup.name] = firstValue;
+
+      for (let i = 1; i < groupedAttributes.length; i++) {
+        const currentGroup = groupedAttributes[i];
+        const validNextVar = variations.find(v => 
+          isVariationInStock(v) &&
+          v.attributes?.some(a => a.name === firstGroup.name && a.value === firstValue) &&
+          v.attributes?.some(a => a.name === currentGroup.name)
+        );
+        
+        if (validNextVar) {
+          const nextAttr = validNextVar.attributes?.find(a => a.name === currentGroup.name);
+          if (nextAttr) attrs[currentGroup.name] = nextAttr.value;
+        } else {
+          attrs[currentGroup.name] = currentGroup.values[0];
+        }
+      }
+      return attrs;
+    }
+
+    baseVar.attributes?.forEach(a => { attrs[a.name] = a.value });
     return attrs;
+  };
+
+  const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
+    return findFirstValidAttributes(initialEdition);
   });
 
   const selectedVar = useMemo(() => {
     if (variations.length === 0) return null;
-
     const exactMatch = variations.find(v => {
       return groupedAttributes.every(group => {
         const attrInVar = v.attributes?.find(a => a.name === group.name);
         return attrInVar ? attrInVar.value === selectedAttrs[group.name] : true;
       });
     });
-    return exactMatch || variations[0];
+    return exactMatch || variations.find(v => isVariationInStock(v)) || variations[0] || null;
   }, [variations, selectedAttrs, groupedAttributes]);
 
   const allGalleryImages = useMemo(() => {
@@ -75,7 +119,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     return Array.from(images);
   }, [product, variations]);
 
-  // اکشن تغییر عکس با کلیک روی متغیرها
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
   const displayImage = selectedGalleryImage || selectedVar?.imageUrl || product.image?.sourceUrl || "/placeholder.jpg";
   
@@ -84,18 +127,35 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
   const categoryImage = category?.image?.sourceUrl;
 
   const handleAttrSelect = (name: string, val: string) => {
-    const newAttrs = { ...selectedAttrs, [name]: val };
-    setSelectedAttrs(newAttrs);
-    setSelectedGalleryImage(null); // ریست کردن گالری برای نمایش عکس متغیر
+    setSelectedAttrs(prev => {
+      const newAttrs = { ...prev, [name]: val };
+      const clickedGroupIndex = groupedAttributes.findIndex(g => g.name === name);
+      
+      if (clickedGroupIndex === 0 && groupedAttributes.length > 1) {
+        for (let i = 1; i < groupedAttributes.length; i++) {
+          const nextGroup = groupedAttributes[i];
+          const firstValidVarForNextGroup = variations.find(v => 
+            isVariationInStock(v) &&
+            v.attributes?.some(a => a.name === name && a.value === val) &&
+            v.attributes?.some(a => a.name === nextGroup.name)
+          );
+          
+          if (firstValidVarForNextGroup) {
+            const matchedAttr = firstValidVarForNextGroup.attributes?.find(a => a.name === nextGroup.name);
+            if (matchedAttr) {
+              newAttrs[nextGroup.name] = matchedAttr.value;
+            }
+          }
+        }
+      }
+      return newAttrs;
+    });
+    setSelectedGalleryImage(null);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 min-h-screen rounded-2xl">
-      
-      {/* 70% سمت چپ: گالری عکس‌ها و توضیحات */}
       <div className="lg:col-span-8 flex flex-col gap-6">
-        
-        {/* گالری اصلی */}
         <div className="relative w-full aspect-[16/9] bg-brand-surface rounded-xl overflow-hidden border border-brand-surface_hover transition-all duration-300 shadow-lg">
           <Image 
             src={displayImage} 
@@ -106,7 +166,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
           />
         </div>
 
-        {/* گالری کوچک زیرین */}
         {allGalleryImages.length > 1 && (
           <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {allGalleryImages.map((imgUrl, idx) => (
@@ -125,7 +184,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
           </div>
         )}
 
-        {/* توضیحات محصول (زیر گالری با بک‌گراند مجزا) */}
         {product.description && (
           <div className="mt-4 bg-brand-surface border border-brand-surface_hover p-6 rounded-2xl shadow-sm">
             <h3 className="text-lg font-bold text-brand-active mb-4">توضیحات محصول</h3>
@@ -137,9 +195,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         )}
       </div>
 
-      {/* 30% سمت راست: اطلاعات، نوتیف و باکس‌های خرید */}
       <div className="lg:col-span-4 flex flex-col gap-6 sticky top-6 h-fit">
-        
         <div>
           <div className="flex items-center gap-2 mb-3">
             {categoryImage && (
@@ -150,8 +206,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
             <span className="text-brand-blue text-xs font-bold uppercase tracking-wider">{categoryName}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
-          
-          {/* جایگاه نوتیفیکشن کوتاه JetEngine */}
           <div className="mt-3 inline-block bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-xs px-3 py-1.5 rounded-md font-medium">
              ✨ تحویل فوری و تضمین شده
           </div>
@@ -166,7 +220,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
 
         <DeliveryAndPrice selectedVariation={selectedVar || variations[0]} />
       </div>
-
     </div>
   );
 }

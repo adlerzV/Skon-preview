@@ -8,10 +8,9 @@ interface DeliveryAndPriceProps {
 }
 
 export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPriceProps) {
-  // پیش‌فرض نال است تا کاربر مجبور به انتخاب شود
   const [deliveryType, setDeliveryType] = useState<"direct" | "gift" | "code" | null>(null);
   
-  const [accountIdentifier, setAccountIdentifier] = useState(""); // ایمیل یا یوزرنیم
+  const [accountIdentifier, setAccountIdentifier] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [battleTag, setBattleTag] = useState("");
   
@@ -19,21 +18,37 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
   const [verifyStatus, setVerifyStatus] = useState<"idle" | "success" | "error">("idle");
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const isDirectDisabled = !selectedVariation.parsedPrice;
-  const isGiftDisabled = selectedVariation.parsedGiftPrice === "disabled";
-  const isCodeDisabled = selectedVariation.parsedCodePrice === "disabled";
+  if (!selectedVariation) {
+    return (
+      <div className="text-brand-surface_m text-sm text-center py-4 bg-brand-surface rounded-xl border border-brand-surface_hover">
+        محصول در حال حاضر موجود نمی‌باشد.
+      </div>
+    );
+  }
 
-  // ریست کردن متد تحویل وقتی متغیر اصلی عوض میشه و متد قبلی در متغیر جدید ناموجوده
+  const isDirectDisabled = !selectedVariation.parsedPrice;
+  const isGiftDisabled = selectedVariation.parsedGiftPrice === "disabled" || !selectedVariation.parsedGiftPrice;
+  const isCodeDisabled = selectedVariation.parsedCodePrice === "disabled" || !selectedVariation.parsedCodePrice;
+
   useEffect(() => {
-    if (deliveryType === "direct" && isDirectDisabled) setDeliveryType(null);
-    if (deliveryType === "gift" && isGiftDisabled) setDeliveryType(null);
-    if (deliveryType === "code" && isCodeDisabled) setDeliveryType(null);
-  }, [selectedVariation, isDirectDisabled, isGiftDisabled, isCodeDisabled, deliveryType]);
+    if (!isDirectDisabled) {
+      setDeliveryType("direct");
+    } else if (!isGiftDisabled) {
+      setDeliveryType("gift");
+    } else if (!isCodeDisabled) {
+      setDeliveryType("code");
+    } else {
+      setDeliveryType(null);
+    }
+  }, [selectedVariation, isDirectDisabled, isGiftDisabled, isCodeDisabled]);
 
   const currentPrice = 
-    deliveryType === "gift" ? selectedVariation.parsedGiftPrice : 
-    deliveryType === "code" ? selectedVariation.parsedCodePrice : 
+    deliveryType === "gift" ? (typeof selectedVariation.parsedGiftPrice === "number" ? selectedVariation.parsedGiftPrice : null) : 
+    deliveryType === "code" ? (typeof selectedVariation.parsedCodePrice === "number" ? selectedVariation.parsedCodePrice : null) : 
     deliveryType === "direct" ? selectedVariation.parsedPrice : null;
+
+  const regularPrice = selectedVariation.regularPrice ? Number(selectedVariation.regularPrice) : null;
+  const hasDiscount = regularPrice && currentPrice && regularPrice > currentPrice;
 
   const handleVerifyBattleTag = () => {
     if (!battleTag.includes("#")) {
@@ -42,14 +57,12 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
     }
     setIsVerifying(true);
     setVerifyStatus("idle");
-    // اینجا در آینده چک کردن جیسون رو پیاده‌سازی می‌کنی
     setTimeout(() => {
       setIsVerifying(false);
       setVerifyStatus("success");
     }, 1200);
   };
 
-  // ولیدیشن فوق‌العاده سخت‌گیرانه برای فعال شدن دکمه خرید
   const isFormValid = () => {
     if (!deliveryType) return false;
     if (deliveryType === "direct") return accountIdentifier.trim().length > 3 && accountPassword.length > 0;
@@ -73,13 +86,11 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
     };
     
     console.log("Adding to cart:", cartItemData);
-    setTimeout(() => setIsAddingToCart(false), 1000); // شبیه‌سازی لودینگ
+    setTimeout(() => setIsAddingToCart(false), 1000);
   };
 
   return (
     <div className="flex flex-col gap-6 mt-2">
-      
-      {/* فقط کارت‌ها بدون بک‌گراند کلی */}
       <div className="flex flex-col gap-3">
         <span className="text-brand-surface_m text-[13px] font-bold uppercase tracking-wide">
           مسیر تحویل محصول:
@@ -158,7 +169,6 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
         </div>
       </div>
 
-      {/* فرم‌های داینامیک */}
       {deliveryType && (
         <div className="bg-brand-surface p-4 rounded-xl border border-brand-surface_hover animate-in fade-in duration-300">
           
@@ -233,16 +243,22 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
         </div>
       )}
 
-      {/* بخش قیمت و دکمه خرید */}
       <div className="mt-auto flex flex-col gap-4">
-        <div className="flex justify-between items-end bg-brand-surface p-4 rounded-xl border border-brand-surface_hover">
+        <div className="flex justify-between items-center bg-brand-surface p-4 rounded-xl border border-brand-surface_hover">
           <span className="text-sm text-brand-surface_m font-medium">مبلغ نهایی:</span>
           {deliveryType === null ? (
              <span className="text-sm text-brand-surface_m">ابتدا روش تحویل را انتخاب کنید</span>
           ) : typeof currentPrice === "number" ? (
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl md:text-3xl font-black text-brand-active">{currentPrice.toLocaleString("fa-IR")}</span>
-              <span className="text-xs text-brand-surface_m">تومان</span>
+            <div className="flex flex-col items-end gap-1">
+              {hasDiscount && (
+                <span className="text-xs text-neutral-500 line-through decoration-red-500/70">
+                  {regularPrice?.toLocaleString("fa-IR")} تومان
+                </span>
+              )}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl md:text-3xl font-black text-brand-sabz">{currentPrice.toLocaleString("fa-IR")}</span>
+                <span className="text-xs text-brand-surface_m">تومان</span>
+              </div>
             </div>
           ) : (
             <span className="text-red-500 font-bold text-lg">ناموجود</span>
