@@ -87,7 +87,7 @@ export default function VariationSelector({
                       onClick={() => onAttributeSelect(group.name, val)}
                       className={`p-3 text-sm font-medium border rounded-xl transition-all duration-200 text-center relative overflow-hidden ${
                         !isValid 
-                          ? "opacity-40 cursor-not-allowed bg-brand-bg border-brand-surface_hover text-brand-surface_m line-through decoration-red-500/50"
+                          ? "opacity-30 cursor-not-allowed bg-brand-bg border-brand-surface_hover/50 text-brand-surface_m/50"
                           : isSelected
                           ? "bg-brand-active border-brand-active text-brand-bg font-bold shadow-[0_0_15px_rgba(248,245,249,0.15)]"
                           : "bg-brand-surface border-brand-surface_hover text-brand-m_khonsa hover:border-brand-m_khonsa"

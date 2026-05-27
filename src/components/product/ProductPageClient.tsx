@@ -131,20 +131,39 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
       const newAttrs = { ...prev, [name]: val };
       const clickedGroupIndex = groupedAttributes.findIndex(g => g.name === name);
       
-      if (clickedGroupIndex === 0 && groupedAttributes.length > 1) {
-        for (let i = 1; i < groupedAttributes.length; i++) {
-          const nextGroup = groupedAttributes[i];
-          const firstValidVarForNextGroup = variations.find(v => 
-            isVariationInStock(v) &&
-            v.attributes?.some(a => a.name === name && a.value === val) &&
-            v.attributes?.some(a => a.name === nextGroup.name)
-          );
+      for (let i = clickedGroupIndex + 1; i < groupedAttributes.length; i++) {
+        const nextGroup = groupedAttributes[i];
+        const currentSelectedValueForNext = newAttrs[nextGroup.name];
+        
+        const isCurrentValid = variations.some(v => {
+          const hasNextValue = v.attributes?.some(a => a.name === nextGroup.name && a.value === currentSelectedValueForNext);
+          if (!hasNextValue) return false;
           
-          if (firstValidVarForNextGroup) {
-            const matchedAttr = firstValidVarForNextGroup.attributes?.find(a => a.name === nextGroup.name);
-            if (matchedAttr) {
-              newAttrs[nextGroup.name] = matchedAttr.value;
-            }
+          const matchesAllPrevious = groupedAttributes.slice(0, i).every(pGroup => {
+            return v.attributes?.some(a => a.name === pGroup.name && a.value === newAttrs[pGroup.name]);
+          });
+          if (!matchesAllPrevious) return false;
+          
+          return isVariationInStock(v);
+        });
+        
+        if (!isCurrentValid) {
+          const fallbackValue = nextGroup.values.find(vVal => {
+            return variations.some(v => {
+              const hasVal = v.attributes?.some(a => a.name === nextGroup.name && a.value === vVal);
+              if (!hasVal) return false;
+              
+              const matchesAllPrevious = groupedAttributes.slice(0, i).every(pGroup => {
+                return v.attributes?.some(a => a.name === pGroup.name && a.value === newAttrs[pGroup.name]);
+              });
+              if (!matchesAllPrevious) return false;
+              
+              return isVariationInStock(v);
+            });
+          });
+          
+          if (fallbackValue) {
+            newAttrs[nextGroup.name] = fallbackValue;
           }
         }
       }
