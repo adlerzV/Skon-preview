@@ -19,11 +19,7 @@ export default function HeaderMenuSwitcher({ shopItems, blogItems }: HeaderMenuS
 
   return (
     <div className="flex-1 h-full transition-all duration-500 ease-in-out">
-      {/* 
-         من از activeData استفاده می‌کنم. 
-         نکته: برای اینکه وقتی دیتا عوض می‌شود، کامپوننت متوجه تغییر شود 
-         و انیمیشن دوباره اجرا شود، از key استفاده می‌کنیم.
-      */}
+
       <DesktopGamesNav key={isBlogSection ? "blog" : "shop"} games={activeData} />
     </div>
   );

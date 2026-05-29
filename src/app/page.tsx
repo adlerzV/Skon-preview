@@ -14,8 +14,6 @@ export default async function Home() {
   return (
     <main className="container mx-auto px-6 max-w-[1600px] pb-12">
       <CategoryHero banners={banners} />
-
-      {/* فراخوانی به صورت Lazy Load */}
       <DynamicProductGrid title="محصولات ویژه و پرطرفدار" products={featured} />
       
       <DynamicProductGrid title="جدیدترین محصولات" products={latest} />
