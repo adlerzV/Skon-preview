@@ -135,18 +135,56 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
 
   const allGalleryImages = useMemo(() => {
     const images = new Set<string>();
-    if (product.image?.sourceUrl) images.add(product.image.sourceUrl);
-    variations.forEach(v => { if (v.imageUrl) images.add(v.imageUrl); });
-    product.galleryImages?.nodes?.forEach((g: any) => { if (g.sourceUrl) images.add(g.sourceUrl); });
+    
+    if (product.image?.sourceUrl?.trim()) {
+      images.add(product.image.sourceUrl.trim());
+    }
+    
+    variations.forEach(v => {
+      if (v.imageUrl?.trim()) {
+        images.add(v.imageUrl.trim());
+      }
+    });
+    
+    product.galleryImages?.nodes?.forEach((g: any) => {
+      if (g.sourceUrl?.trim()) {
+        images.add(g.sourceUrl.trim());
+      }
+    });
+    
     return Array.from(images);
   }, [product, variations]);
 
+  const firstBranchVarImageUrl = useMemo(() => {
+    if (variations.length === 0 || groupedAttributes.length === 0) return null;
+    const firstGroup = groupedAttributes[0];
+    const selectedValForFirstGroup = selectedAttrs[firstGroup.name];
+    const matched = variations.find(v => 
+      v.attributes?.some(a => a.name === firstGroup.name && a.value === selectedValForFirstGroup) && v.imageUrl
+    );
+    return matched ? matched.imageUrl : null;
+  }, [variations, groupedAttributes, selectedAttrs]);
+
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
-  const displayImage = selectedGalleryImage || combinedAggregateVar?.imageUrl || product.image?.sourceUrl || "/placeholder.jpg";
+  const displayImage = selectedGalleryImage || firstBranchVarImageUrl || product.image?.sourceUrl || "/placeholder.jpg";
   
   const category = product.productCategories?.nodes?.[0];
   const categoryName = category?.name || "بدون دسته";
   const categoryImage = category?.image?.sourceUrl;
+
+  const handlePrevImage = () => {
+    const currentIndex = allGalleryImages.indexOf(displayImage);
+    if (currentIndex === -1) return;
+    const prevIndex = currentIndex === 0 ? allGalleryImages.length - 1 : currentIndex - 1;
+    setSelectedGalleryImage(allGalleryImages[prevIndex]);
+  };
+
+  const handleNextImage = () => {
+    const currentIndex = allGalleryImages.indexOf(displayImage);
+    if (currentIndex === -1) return;
+    const nextIndex = currentIndex === allGalleryImages.length - 1 ? 0 : currentIndex + 1;
+    setSelectedGalleryImage(allGalleryImages[nextIndex]);
+  };
 
   const handleAttrSelect = (name: string, val: string) => {
     setSelectedAttrs(prev => {
@@ -176,15 +214,46 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
           draftAttrs[nextTargetGroup.name] = viableEscapeVal || nextTargetGroup.values[0];
         }
       }
+
+      if (changeLevelIndex === 0) {
+        setSelectedGalleryImage(null);
+      }
+
       return draftAttrs;
     });
-    setSelectedGalleryImage(null);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 min-h-screen rounded-2xl">
-      <div className="lg:col-span-8 flex flex-col gap-6">
-        <div className="relative w-full aspect-[16/9] bg-brand-surface rounded-xl overflow-hidden border border-brand-surface_hover transition-all duration-300 shadow-lg">
+      
+      <div className="lg:col-span-4 lg:order-first flex flex-col gap-6 sticky top-6 h-fit">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            {categoryImage && (
+              <div className="relative w-6 h-6 rounded-full overflow-hidden bg-brand-surface_hover">
+                <Image src={categoryImage} alt={categoryName} fill className="object-cover" />
+              </div>
+            )}
+            <span className="text-brand-blue text-xs font-bold uppercase tracking-wider">{categoryName}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
+          <div className="mt-3 inline-block bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-xs px-3 py-1.5 rounded-md font-medium">
+             ✨ تحویل فوری و تضمین شده
+          </div>
+        </div>
+
+        <VariationSelector 
+          groupedAttributes={groupedAttributes}
+          selectedAttrs={selectedAttrs}
+          onAttributeSelect={handleAttrSelect}
+          variations={variations}
+        />
+
+        <DeliveryAndPrice selectedVariation={combinedAggregateVar || variations[0]} />
+      </div>
+
+      <div className="lg:col-span-8 lg:order-last flex flex-col gap-6">
+        <div className="relative w-full aspect-[16/9] bg-brand-surface rounded-xl overflow-hidden border border-brand-surface_hover transition-all duration-300 shadow-lg group">
           <Image 
             src={displayImage} 
             alt={product.name} 
@@ -192,6 +261,25 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
             className="object-cover transition-opacity duration-300"
             priority
           />
+
+          {allGalleryImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handleNextImage}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-brand-surface/80 border border-brand-surface_hover text-brand-active flex items-center justify-center hover:bg-brand-active hover:text-brand-bg transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrevImage}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-brand-surface/80 border border-brand-surface_hover text-brand-active flex items-center justify-center hover:bg-brand-active hover:text-brand-bg transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 13 12 9 6"/></svg>
+              </button>
+            </>
+          )}
         </div>
 
         {allGalleryImages.length > 1 && (
@@ -223,31 +311,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         )}
       </div>
 
-      <div className="lg:col-span-4 flex flex-col gap-6 sticky top-6 h-fit">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            {categoryImage && (
-              <div className="relative w-6 h-6 rounded-full overflow-hidden bg-brand-surface_hover">
-                <Image src={categoryImage} alt={categoryName} fill className="object-cover" />
-              </div>
-            )}
-            <span className="text-brand-blue text-xs font-bold uppercase tracking-wider">{categoryName}</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
-          <div className="mt-3 inline-block bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-xs px-3 py-1.5 rounded-md font-medium">
-             ✨ تحویل فوری و تضمین شده
-          </div>
-        </div>
-
-        <VariationSelector 
-          groupedAttributes={groupedAttributes}
-          selectedAttrs={selectedAttrs}
-          onAttributeSelect={handleAttrSelect}
-          variations={variations}
-        />
-
-        <DeliveryAndPrice selectedVariation={combinedAggregateVar || variations[0]} />
-      </div>
     </div>
   );
 }

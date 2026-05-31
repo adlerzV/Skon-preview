@@ -20,10 +20,26 @@ export default function VariationSelector({
   if (!groupedAttributes || groupedAttributes.length === 0) return null;
 
   const getHoverImageForValue = (attrName: string, attrValue: string) => {
-    const matchedVar = variations.find(v => 
+    const matchedVar = variations.find(v => {
+      const matchesHovered = v.attributes?.some(a => a.name === attrName && a.value === attrValue);
+      if (!matchesHovered) return false;
+
+      const matchesOthers = groupedAttributes.every(g => {
+        if (g.name === attrName) return true;
+        const currentSelectedVal = selectedAttrs[g.name];
+        if (!currentSelectedVal) return true;
+        return v.attributes?.some(a => a.name === g.name && a.value === currentSelectedVal);
+      });
+
+      return matchesOthers && v.imageUrl;
+    });
+
+    if (matchedVar) return matchedVar.imageUrl;
+
+    const fallbackVar = variations.find(v => 
       v.attributes?.some(a => a.name === attrName && a.value === attrValue) && v.imageUrl
     );
-    return matchedVar ? matchedVar.imageUrl : null;
+    return fallbackVar ? fallbackVar.imageUrl : null;
   };
 
   const isVariationInStockGlobally = (v: VariationCard) => {
@@ -41,7 +57,6 @@ export default function VariationSelector({
         
         const processedValues = group.values.map(btnValue => {
           const isValidBtn = variations.some(v => {
-            
             const confirmsThisBtnVal = v.attributes?.some(a => a.name === group.name && a.value === btnValue);
             if (!confirmsThisBtnVal) return false;
             
