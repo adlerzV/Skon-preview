@@ -77,7 +77,7 @@ export default function VariationSelector({
         if (processedValues.length === 0) return null;
 
         return (
-          <div key={group.name} className="flex flex-col gap-3">
+          <div key={group.name} className="flex flex-col gap-1">
             <span className="text-brand-surface_m text-[13px] font-bold uppercase tracking-wide">
               انتخاب {cleanName}:
             </span>
@@ -93,11 +93,11 @@ export default function VariationSelector({
                       type="button"
                       disabled={!isValidBtn}
                       onClick={() => onAttributeSelect(group.name, val)}
-                      className={`p-4 text-sm font-medium ransition-all  duration-200 text-center relative overflow-hidden ${
+                      className={`p-4 text-sm font-medium transition-all duration-200 text-center relative overflow-hidden ${
                         !isValidBtn 
                           ? "opacity-30 cursor-not-allowed bg-brand-bg text-brand-surface_m/50"
                           : isSelected
-                          ? "bg-brand-blue  text-brand-active font-bold "
+                          ? "bg-brand-blue text-brand-active font-bold"
                           : "bg-brand-surface text-brand-m_khonsa hover:bg-brand-surface_hover"
                       }`}
                     >

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import { ProductNode, VariationCard } from "@/lib/wp-graphql";
 import DeliveryAndPrice from "@/components/product/DeliveryAndPrice";
@@ -13,7 +13,7 @@ interface Props {
 
 const checkStockGlobally = (v: VariationCard) => {
   return (
-    (v.parsedPrice != null) ||
+    v.parsedPrice != null ||
     (v.parsedGiftPrice != null && v.parsedGiftPrice !== "disabled") ||
     (v.parsedCodePrice != null && v.parsedCodePrice !== "disabled")
   );
@@ -21,7 +21,10 @@ const checkStockGlobally = (v: VariationCard) => {
 
 export default function ProductPageClient({ product, initialEdition }: Props) {
   const variations = product.variationCards || [];
-  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [trackOffset, setTrackOffset] = useState(0);
+
+  // نرمال‌سازی متون برای جلوگیری از تداخل انکودینگ حروف فارسی/عربی بین سرور و کلاینت
   const groupedAttributes = useMemo(() => {
     const map = new Map<string, Set<string>>();
     variations.forEach(v => {
@@ -34,11 +37,22 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     const filteredMap = new Map<string, Set<string>>();
     map.forEach((values, name) => {
       const nameLower = name.toLowerCase();
-      const isDeliveryAttr = nameLower.includes('delivery') || nameLower.includes('تحویل') || nameLower.includes('روش') || nameLower.includes('method');
-      const isDeliveryVal = Array.from(values).some(val => 
-        val.includes('گیفت') || val.includes('مستقیم') || val.includes('کد') || 
-        val.toLowerCase().includes('gift') || val.toLowerCase().includes('direct')
-      );
+      const normalize = (s: string) => s.replace(/ي/g, 'ی').replace(/ك/g, 'ک').toLowerCase();
+      
+      const normalizedName = normalize(nameLower);
+      const isDeliveryAttr = normalizedName.includes('delivery') || 
+                             normalizedName.includes('تحویل') || 
+                             normalizedName.includes('روش') || 
+                             normalizedName.includes('method');
+      
+      const isDeliveryVal = Array.from(values).some(val => {
+        const normalizedVal = normalize(val);
+        return normalizedVal.includes('گیفت') || 
+               normalizedVal.includes('مستقیم') || 
+               normalizedVal.includes('کد') || 
+               normalizedVal.includes('gift') || 
+               normalizedVal.includes('direct');
+      });
 
       if (!isDeliveryAttr && !isDeliveryVal) {
         filteredMap.set(name, values);
@@ -78,8 +92,9 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     return resultAttrs;
   };
 
+  // مقداردهی اولیه وضعیت مستقیماً با initialEdition جهت هماهنگی کامل SSR و کلاینت
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
-    return findFirstValidAttributes();
+    return findFirstValidAttributes(initialEdition);
   });
 
   useEffect(() => {
@@ -159,32 +174,52 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     if (variations.length === 0 || groupedAttributes.length === 0) return null;
     const firstGroup = groupedAttributes[0];
     const selectedValForFirstGroup = selectedAttrs[firstGroup.name];
+    
     const matched = variations.find(v => 
       v.attributes?.some(a => a.name === firstGroup.name && a.value === selectedValForFirstGroup) && v.imageUrl
     );
-    return matched ? matched.imageUrl : null;
+    return matched && matched.imageUrl ? matched.imageUrl.trim() : null;
   }, [variations, groupedAttributes, selectedAttrs]);
 
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
-  const displayImage = selectedGalleryImage || firstBranchVarImageUrl || product.image?.sourceUrl || "/placeholder.jpg";
+  const displayImage = selectedGalleryImage || firstBranchVarImageUrl || product.image?.sourceUrl?.trim() || "/placeholder.jpg";
   
+  const currentIndex = useMemo(() => {
+    const idx = allGalleryImages.indexOf(displayImage);
+    return idx !== -1 ? idx : 0;
+  }, [allGalleryImages, displayImage]);
+
   const category = product.productCategories?.nodes?.[0];
   const categoryName = category?.name || "بدون دسته";
   const categoryImage = category?.image?.sourceUrl;
 
   const handlePrevImage = () => {
-    const currentIndex = allGalleryImages.indexOf(displayImage);
-    if (currentIndex === -1) return;
-    const prevIndex = currentIndex === 0 ? allGalleryImages.length - 1 : currentIndex - 1;
-    setSelectedGalleryImage(allGalleryImages[prevIndex]);
+    if (currentIndex > 0) {
+      setSelectedGalleryImage(allGalleryImages[currentIndex - 1]);
+    }
   };
 
   const handleNextImage = () => {
-    const currentIndex = allGalleryImages.indexOf(displayImage);
-    if (currentIndex === -1) return;
-    const nextIndex = currentIndex === allGalleryImages.length - 1 ? 0 : currentIndex + 1;
-    setSelectedGalleryImage(allGalleryImages[nextIndex]);
+    if (currentIndex < allGalleryImages.length - 1) {
+      setSelectedGalleryImage(allGalleryImages[currentIndex + 1]);
+    }
   };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const containerWidth = containerRef.current.offsetWidth;
+    const thumbnailWidth = 100; 
+    const gapWidth = 8; 
+    const itemWidthWithGap = thumbnailWidth + gapWidth;
+    
+    const totalTrackWidth = allGalleryImages.length * thumbnailWidth + (allGalleryImages.length - 1) * gapWidth;
+    const maxScroll = Math.max(0, totalTrackWidth - containerWidth);
+    
+    const targetOffset = (currentIndex * itemWidthWithGap) - (containerWidth / 2) + (thumbnailWidth / 2);
+    
+    setTrackOffset(Math.min(maxScroll, Math.max(0, targetOffset)));
+  }, [currentIndex, allGalleryImages]);
 
   const handleAttrSelect = (name: string, val: string) => {
     setSelectedAttrs(prev => {
@@ -224,9 +259,9 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 min-h-screen">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 min-h-screen" dir="rtl">
       
-      <div className="lg:col-span-4 lg:order-first flex flex-col gap-6 sticky top-6 h-fit">
+      <div className="lg:col-span-4 lg:order-first flex flex-col gap-6 sticky top-10 h-fit">
         <div>
           <div className="flex items-center gap-2 mb-3">
             {categoryImage && (
@@ -234,7 +269,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
                 <Image src={categoryImage} alt={categoryName} fill className="object-cover" />
               </div>
             )}
-            <span className="text-brand-surface_m text-xs font-bold uppercase tracking-wider">{categoryName}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
           <div className="mt-3 inline-block bg-brand-zard text-brand-menu text-xs px-2 py-2.5 font-medium">
@@ -252,7 +286,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         <DeliveryAndPrice selectedVariation={combinedAggregateVar || variations[0]} />
       </div>
 
-      <div className="lg:col-span-8 lg:order-last flex flex-col gap-6">
+      <div className="lg:col-span-8 lg:order-last flex flex-col gap-3">
         <div className="relative w-full aspect-[16/9] bg-brand-surface overflow-hidden border border-brand-surface_hover transition-all duration-300 shadow-lg group">
           <Image 
             src={displayImage} 
@@ -267,14 +301,16 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
               <button
                 type="button"
                 onClick={handleNextImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-brand-bg hover:border-brand-surface_m text-m_khonsa hover:text-brand-white p-2 transition-all opacity-0 group-hover:opacity-100 border border-brand-surface"
+                disabled={currentIndex === allGalleryImages.length - 1}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-40 bg-brand-bg text-brand-m_khonsa p-2 border border-brand-surface transition-all opacity-0 group-hover:opacity-100 hover:text-brand-white hover:border-brand-surface_m disabled:opacity-50 disabled:pointer-events-none"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <button
                 type="button"
                 onClick={handlePrevImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-40 bg-brand-bg hover:border-brand-surface_m text-m_khonsa hover:text-brand-white p-2 transition-all opacity-0 group-hover:opacity-100 border border-brand-surface"
+                disabled={currentIndex === 0}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-40 bg-brand-bg text-brand-m_khonsa p-2 border border-brand-surface transition-all opacity-0 group-hover:opacity-100 hover:text-brand-white hover:border-brand-surface_m disabled:opacity-50 disabled:pointer-events-none"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 13 12 9 6"/></svg>
               </button>
@@ -283,28 +319,40 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         </div>
 
         {allGalleryImages.length > 1 && (
-          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {allGalleryImages.map((imgUrl, idx) => (
-              <button 
-                key={idx} 
-                onClick={() => setSelectedGalleryImage(imgUrl)}
-                className={`relative aspect-video overflow-hidden border-2 transition-all duration-200 ${
-                  (selectedGalleryImage === imgUrl) || (!selectedGalleryImage && imgUrl === displayImage) 
-                    ? 'border-brand-blue opacity-100 scale-105' 
-                    : 'border-transparent opacity-60 hover:opacity-100 hover:border-brand-surface_hover'
-                }`}
-              >
-                <Image src={imgUrl} alt={`گالری ${idx + 1}`} fill className="object-cover" />
-              </button>
-            ))}
+          <div ref={containerRef} className="relative w-full overflow-hidden py-1" dir="rtl">
+            <div 
+              className="flex transition-transform duration-300 ease-in-out will-change-transform"
+              style={{ 
+                gap: `8px`,
+                transform: `translateX(${trackOffset}px)` 
+              }}
+            >
+              {allGalleryImages.map((imgUrl, idx) => {
+                const isActive = idx === currentIndex;
+                return (
+                  <button 
+                    key={idx} 
+                    type="button"
+                    onClick={() => setSelectedGalleryImage(imgUrl)}
+                    className={`relative w-[100px] aspect-video flex-shrink-0 overflow-hidden border transition-all duration-300 ${
+                      isActive 
+                        ? 'border-brand-blue opacity-100 ring-2 ring-brand-blue/60 z-10 shadow-[0_0_12px_rgba(0,116,224,0.3)]' 
+                        : 'border-brand-surface_hover opacity-40 hover:opacity-80'
+                    }`}
+                  >
+                    <Image src={imgUrl} alt={`گالری ${idx + 1}`} fill className="object-cover" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {product.description && (
-          <div className="bg-brand-menu p-6">
+          <div className="bg-brand-menu p-6 mt-2">
             <h3 className="text-lg font-bold text-brand-active mb-4">توضیحات محصول</h3>
             <div 
-              className="text-brand-surface_m text-sm leading-7 prose prose-invert max-w-none"
+              className="text-brand-surface_m text-sm leading-8 prose prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: product.description }} 
             />
           </div>
