@@ -230,15 +230,15 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         <div>
           <div className="flex items-center gap-2 mb-3">
             {categoryImage && (
-              <div className="relative w-6 h-6 overflow-hidden bg-brand-surface_hover">
+              <div className="relative w-8 h-8 overflow-hidden">
                 <Image src={categoryImage} alt={categoryName} fill className="object-cover" />
               </div>
             )}
-            <span className="text-brand-blue text-xs font-bold uppercase tracking-wider">{categoryName}</span>
+            <span className="text-brand-surface_m text-xs font-bold uppercase tracking-wider">{categoryName}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
-          <div className="mt-3 inline-block bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-xs px-3 py-1.5 font-medium">
-             ✨ تحویل فوری و تضمین شده
+          <div className="mt-3 inline-block bg-brand-zard text-brand-menu text-xs px-2 py-2.5 font-medium">
+             نوتیف کوتاه
           </div>
         </div>
 

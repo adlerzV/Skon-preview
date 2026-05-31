@@ -93,19 +93,19 @@ export default function VariationSelector({
                       type="button"
                       disabled={!isValidBtn}
                       onClick={() => onAttributeSelect(group.name, val)}
-                      className={`p-3 text-sm font-medium border rounded-xl transition-all duration-200 text-center relative overflow-hidden ${
+                      className={`p-4 text-sm font-medium ransition-all  duration-200 text-center relative overflow-hidden ${
                         !isValidBtn 
-                          ? "opacity-30 cursor-not-allowed bg-brand-bg border-brand-surface_hover/50 text-brand-surface_m/50"
+                          ? "opacity-30 cursor-not-allowed bg-brand-bg text-brand-surface_m/50"
                           : isSelected
-                          ? "bg-brand-active border-brand-active text-brand-bg font-bold shadow-[0_0_15px_rgba(248,245,249,0.15)]"
-                          : "bg-brand-surface border-brand-surface_hover text-brand-m_khonsa hover:border-brand-m_khonsa"
+                          ? "bg-brand-blue  text-brand-active font-bold "
+                          : "bg-brand-surface text-brand-m_khonsa hover:bg-brand-surface_hover"
                       }`}
                     >
                       <span className="relative z-10">{val}</span>
                     </button>
                     
                     {miniImage && isValidBtn && (
-                      <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-32 aspect-video bg-brand-bg border border-brand-surface_hover rounded-lg overflow-hidden opacity-0 invisible group-hover/var:opacity-100 group-hover/var:visible transition-all duration-200 z-20 shadow-xl pointer-events-none">
+                      <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-32 aspect-video bg-brand-bg border border-brand-surface_hover overflow-hidden opacity-0 invisible group-hover/var:opacity-100 group-hover/var:visible transition-all duration-200 z-2 pointer-events-none">
                         <Image src={miniImage} alt={val} fill className="object-cover" />
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-brand-surface_hover"></div>
                       </div>
