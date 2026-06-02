@@ -1,11 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { VariationCard } from "@/lib/wp-graphql";
 
+interface AttrValueItem {
+  value: string;
+  flagUrl: string;
+}
+
 interface VariationSelectorProps {
-  groupedAttributes: { name: string; values: string[] }[];
+  groupedAttributes: { name: string; values: AttrValueItem[] }[];
   selectedAttrs: Record<string, string>;
   onAttributeSelect: (name: string, value: string) => void;
   variations: VariationCard[];
@@ -17,30 +22,9 @@ export default function VariationSelector({
   onAttributeSelect,
   variations
 }: VariationSelectorProps) {
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
   if (!groupedAttributes || groupedAttributes.length === 0) return null;
-
-  const getHoverImageForValue = (attrName: string, attrValue: string) => {
-    const matchedVar = variations.find(v => {
-      const matchesHovered = v.attributes?.some(a => a.name === attrName && a.value === attrValue);
-      if (!matchesHovered) return false;
-
-      const matchesOthers = groupedAttributes.every(g => {
-        if (g.name === attrName) return true;
-        const currentSelectedVal = selectedAttrs[g.name];
-        if (!currentSelectedVal) return true;
-        return v.attributes?.some(a => a.name === g.name && a.value === currentSelectedVal);
-      });
-
-      return matchesOthers && v.imageUrl;
-    });
-
-    if (matchedVar) return matchedVar.imageUrl;
-
-    const fallbackVar = variations.find(v => 
-      v.attributes?.some(a => a.name === attrName && a.value === attrValue) && v.imageUrl
-    );
-    return fallbackVar ? fallbackVar.imageUrl : null;
-  };
 
   const isVariationInStockGlobally = (v: VariationCard) => {
     return (
@@ -51,69 +35,97 @@ export default function VariationSelector({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col md:flex-row gap-4 w-full">
       {groupedAttributes.map((group, currentLayerIdx) => {
+        const isFirst = currentLayerIdx === 0;
         const cleanName = group.name.replace('pa_', '').replace('attribute_', '');
         
         const processedValues = group.values.map(btnValue => {
           const isValidBtn = variations.some(v => {
-            const confirmsThisBtnVal = v.attributes?.some(a => a.name === group.name && a.value === btnValue);
+            const confirmsThisBtnVal = v.attributes?.some(a => a.name === group.name && a.value === btnValue.value);
             if (!confirmsThisBtnVal) return false;
-            
             for (let parentStepIdx = 0; parentStepIdx < currentLayerIdx; parentStepIdx++) {
                const upperG = groupedAttributes[parentStepIdx];
                const currentMandatoryChoiceFromUser = selectedAttrs[upperG.name];
                const adheresToUpstreamRule = v.attributes?.some(a => a.name === upperG.name && a.value === currentMandatoryChoiceFromUser);
-               
                if (!adheresToUpstreamRule) return false;
             }
-            
             return isVariationInStockGlobally(v);
           });
-
-          return { value: btnValue, isValidBtn };
+          return { item: btnValue, isValidBtn };
         });
 
         if (processedValues.length === 0) return null;
 
+        const currentSelectedValue = selectedAttrs[group.name];
+        const currentSelectedItem = group.values.find(v => v.value === currentSelectedValue);
+
         return (
-          <div key={group.name} className="flex flex-col gap-1">
+          <div 
+            key={group.name} 
+            className={`relative flex flex-col gap-1 w-full ${isFirst ? "md:w-[70%]" : "md:w-[30%]"}`}
+          >
             <span className="text-brand-surface_m text-[13px] font-bold uppercase tracking-wide">
               انتخاب {cleanName}:
             </span>
-            
-            <div className="grid grid-cols-2 gap-2">
-              {processedValues.map(({ value: val, isValidBtn }) => {
-                const isSelected = selectedAttrs[group.name] === val;
-                const miniImage = currentLayerIdx === 0 ? getHoverImageForValue(group.name, val) : null;
-                
-                return (
-                  <div key={val} className="relative group/var flex flex-col">
+
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === group.name ? null : group.name)}
+              className="w-full p-4 text-sm font-medium transition-all duration-200 flex items-center justify-between bg-brand-surface text-brand-active border border-brand-surface_hover hover:bg-brand-surface_hover"
+            >
+              <div className="flex items-center gap-2">
+                {currentSelectedItem?.flagUrl && (
+                  <div className="relative w-5 h-3.5 overflow-hidden rounded-sm flex-shrink-0">
+                    <Image src={currentSelectedItem.flagUrl} alt="" fill className="object-cover" />
+                  </div>
+                )}
+                <span>{currentSelectedValue || `انتخاب ${cleanName}`}</span>
+              </div>
+              <svg 
+                className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === group.name ? "rotate-180" : ""}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {activeDropdown === group.name && (
+              <div className="absolute right-0 left-0 top-[100%] mt-1 bg-brand-surface border border-brand-surface_hover z-50 max-h-60 overflow-y-auto shadow-2xl">
+                {processedValues.map(({ item, isValidBtn }) => {
+                  const isSelected = selectedAttrs[group.name] === item.value;
+                  return (
                     <button
+                      key={item.value}
                       type="button"
                       disabled={!isValidBtn}
-                      onClick={() => onAttributeSelect(group.name, val)}
-                      className={`p-4 text-sm font-medium transition-all duration-200 text-center relative overflow-hidden ${
-                        !isValidBtn 
+                      onClick={() => {
+                        if (isValidBtn) {
+                          onAttributeSelect(group.name, item.value);
+                          setActiveDropdown(null);
+                        }
+                      }}
+                      className={`w-full p-3 text-right text-sm font-medium transition-all duration-150 flex items-center gap-3 border-b border-brand-surface_hover/40 last:border-0 ${
+                        !isValidBtn
                           ? "opacity-30 cursor-not-allowed bg-brand-bg text-brand-surface_m/50"
                           : isSelected
                           ? "bg-brand-blue text-brand-active font-bold"
-                          : "bg-brand-surface text-brand-m_khonsa hover:bg-brand-surface_hover"
+                          : "text-brand-m_khonsa hover:bg-brand-surface_hover hover:text-brand-active"
                       }`}
                     >
-                      <span className="relative z-10">{val}</span>
+                      {item.flagUrl && (
+                        <div className="relative w-6 h-4 overflow-hidden rounded-sm flex-shrink-0">
+                          <Image src={item.flagUrl} alt="" fill className="object-cover" />
+                        </div>
+                      )}
+                      <span>{item.value}</span>
                     </button>
-                    
-                    {miniImage && isValidBtn && (
-                      <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-32 aspect-video bg-brand-bg border border-brand-surface_hover overflow-hidden opacity-0 invisible group-hover/var:opacity-100 group-hover/var:visible transition-all duration-200 z-2 pointer-events-none">
-                        <Image src={miniImage} alt={val} fill className="object-cover" />
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-brand-surface_hover"></div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

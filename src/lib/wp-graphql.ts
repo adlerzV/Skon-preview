@@ -8,7 +8,7 @@ export interface VariationCard {
   regularPrice: string;
   salePrice: string;
   imageUrl: string;
-  attributes: Array<{ name: string; value: string }>;
+  attributes: Array<{ name: string; value: string; flagUrl: string }>;
   giftPriceToman: string;
   giftRegularPriceToman?: string;
   codePriceToman: string;
@@ -29,6 +29,8 @@ export interface ProductNode {
   featured?: boolean;
   date?: string;
   shortDescription?: string;
+  shortNotify?: string;
+  secondaryGallery?: Array<{ description: string; imageUrl: string }> | null;
   description?: string;
   image?: { sourceUrl: string } | null;
   price?: string;
@@ -71,7 +73,6 @@ const parsePrice = (priceString?: string | null): number | null => {
   return numericString ? parseInt(numericString, 10) : null;
 };
 
-// فرگمنت اصلاح شده با فیلدهای جدید ریگولار
 export const PRODUCT_CARD_FIELDS = `
   fragment ProductCardFields on Product {
     id
@@ -81,6 +82,7 @@ export const PRODUCT_CARD_FIELDS = `
     featured
     date
     shortDescription
+    shortNotify
     image {
       sourceUrl(size: MEDIUM)
     }
@@ -117,6 +119,7 @@ export const PRODUCT_CARD_FIELDS = `
         attributes {
           name
           value
+          flagUrl
         }
       }
     }
@@ -155,20 +158,26 @@ export async function fetchGraphQL(query: string, variables: any = {}, tags: str
     fetchOptions.next = { tags: safeTags };
   }
 
-  const res = await fetch(WP_GRAPHQL_URL, fetchOptions);
+  try {
+    const res = await fetch(WP_GRAPHQL_URL, fetchOptions);
 
-  if (!res.ok) {
-    throw new Error(`GraphQL HTTP Error: ${res.status} ${res.statusText}`);
-  }
+    if (!res.ok) {
+      console.error(`GraphQL HTTP Error: ${res.status} ${res.statusText}`);
+      return null;
+    }
 
-  const json = await res.json();
-  
-  if (json.errors) {
-    console.error('GraphQL Errors:', JSON.stringify(json.errors, null, 2));
-    throw new Error('GraphQL Execution Error');
+    const json = await res.json();
+    
+    if (json.errors) {
+      console.error('GraphQL Errors:', JSON.stringify(json.errors, null, 2));
+      return null;
+    }
+    
+    return json.data;
+  } catch (error) {
+    console.error('Fetch GraphQL Network Error:', error);
+    return null;
   }
-  
-  return json.data;
 }
 
 export const formatProducts = (products: ProductNode[], archiveMode: boolean = false): ProductNode[] => {
@@ -222,7 +231,7 @@ export const formatProducts = (products: ProductNode[], archiveMode: boolean = f
           price: representativeVar.price,
           regularPrice: representativeVar.regularPrice,
           salePrice: representativeVar.salePrice,
-          parsedPrice: representativeVar.parsedPrice,
+          parsedPrice: representativeVar.parsedPrice, 
           parsedRegularPrice: representativeVar.parsedRegularPrice,
           variationCards: [], 
           isVariation: true,
@@ -231,10 +240,13 @@ export const formatProducts = (products: ProductNode[], archiveMode: boolean = f
         });
       });
     } else {
+      const firstVarPrice = parsedVariationCards.length > 0 ? parsedVariationCards[0].parsedPrice : null;
+      const firstVarRegularPrice = parsedVariationCards.length > 0 ? parsedVariationCards[0].parsedRegularPrice : null;
+
       formattedProducts.push({
         ...product,
-        parsedPrice: parsePrice(product.price),
-        parsedRegularPrice: parsePrice(product.regularPrice),
+        parsedPrice: product.variationCards && product.variationCards.length > 0 ? firstVarPrice : parsePrice(product.price),
+        parsedRegularPrice: product.variationCards && product.variationCards.length > 0 ? firstVarRegularPrice : parsePrice(product.regularPrice),
         variationCards: parsedVariationCards,
         isVariation: parsedVariationCards.length > 0
       });
@@ -434,6 +446,10 @@ export async function getProductDetail(slug: string) {
       product(id: $id, idType: SLUG) {
         ...ProductCardFields
         description
+        secondaryGallery {
+          description
+          imageUrl
+        }
         galleryImages {
           nodes {
             sourceUrl(size: LARGE)

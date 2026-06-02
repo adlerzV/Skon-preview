@@ -11,6 +11,14 @@ interface Props {
   initialEdition?: string;
 }
 
+interface Review {
+  id: number;
+  author: string;
+  rating: number;
+  date: string;
+  content: string;
+}
+
 const checkStockGlobally = (v: VariationCard) => {
   return (
     v.parsedPrice != null ||
@@ -23,37 +31,41 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
   const variations = product.variationCards || [];
   const containerRef = useRef<HTMLDivElement>(null);
   const [trackOffset, setTrackOffset] = useState(0);
+  const [reviews, setReviews] = useState<Review[]>([
+    { id: 1, author: "محمد علوی", rating: 5, date: "۱۴۰۵/۰۲/۱۴", content: "تحویل بسیار سریع و پاسخگویی عالی بود. ممنون از سایت خوبتون." },
+    { id: 2, author: "رضا کریمی", rating: 4, date: "۱۴۰۵/۰۳/۰۲", content: "قیمت‌ها نسبت به جاهای دیگه مناسب‌تره، فقط کاش تنوع ریجن‌ها بیشتر بشه." }
+  ]);
+  const [newReview, setNewReview] = useState({ author: "", rating: 5, content: "" });
 
-  // نرمال‌سازی متون برای جلوگیری از تداخل انکودینگ حروف فارسی/عربی بین سرور و کلاینت
   const groupedAttributes = useMemo(() => {
-    const map = new Map<string, Set<string>>();
+    const map = new Map<string, Set<{ value: string; flagUrl: string }>>();
     variations.forEach(v => {
       v.attributes?.forEach(attr => {
         if (!map.has(attr.name)) map.set(attr.name, new Set());
-        map.get(attr.name)!.add(attr.value);
+        const existing = Array.from(map.get(attr.name)!).find(item => item.value === attr.value);
+        if (!existing) {
+          map.get(attr.name)!.add({ value: attr.value, flagUrl: attr.flagUrl || "" });
+        }
       });
     });
 
-    const filteredMap = new Map<string, Set<string>>();
+    const filteredMap = new Map<string, Set<{ value: string; flagUrl: string }>>();
     map.forEach((values, name) => {
       const nameLower = name.toLowerCase();
       const normalize = (s: string) => s.replace(/ي/g, 'ی').replace(/ك/g, 'ک').toLowerCase();
-      
       const normalizedName = normalize(nameLower);
       const isDeliveryAttr = normalizedName.includes('delivery') || 
                              normalizedName.includes('تحویل') || 
                              normalizedName.includes('روش') || 
                              normalizedName.includes('method');
-      
-      const isDeliveryVal = Array.from(values).some(val => {
-        const normalizedVal = normalize(val);
+      const isDeliveryVal = Array.from(values).some(item => {
+        const normalizedVal = normalize(item.value);
         return normalizedVal.includes('گیفت') || 
                normalizedVal.includes('مستقیم') || 
                normalizedVal.includes('کد') || 
                normalizedVal.includes('gift') || 
                normalizedVal.includes('direct');
       });
-
       if (!isDeliveryAttr && !isDeliveryVal) {
         filteredMap.set(name, values);
       }
@@ -71,28 +83,24 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
 
     for (let i = 0; i < groupedAttributes.length; i++) {
       const group = groupedAttributes[i];
-
-      if (i === 0 && targetEdition && group.values.includes(targetEdition)) {
+      if (i === 0 && targetEdition && group.values.some(v => v.value === targetEdition)) {
         resultAttrs[group.name] = targetEdition;
         continue;
       }
-
-      const validOpt = group.values.find(candidateValue => {
+      const validOpt = group.values.find(candidate => {
         return variations.some(v => {
           const matchesPreceding = groupedAttributes.slice(0, i).every(prevG => 
              v.attributes?.some(a => a.name === prevG.name && a.value === resultAttrs[prevG.name])
           );
-          const matchesCandidate = v.attributes?.some(a => a.name === group.name && a.value === candidateValue);
+          const matchesCandidate = v.attributes?.some(a => a.name === group.name && a.value === candidate.value);
           return matchesPreceding && matchesCandidate && checkStockGlobally(v);
         });
       });
-
-      resultAttrs[group.name] = validOpt || group.values[0]; 
+      resultAttrs[group.name] = validOpt ? validOpt.value : group.values[0].value; 
     }
     return resultAttrs;
   };
 
-  // مقداردهی اولیه وضعیت مستقیماً با initialEdition جهت هماهنگی کامل SSR و کلاینت
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() => {
     return findFirstValidAttributes(initialEdition);
   });
@@ -105,14 +113,12 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
 
   const combinedAggregateVar = useMemo(() => {
     if (variations.length === 0) return null;
-
     const matchingVars = variations.filter(v => {
       return groupedAttributes.every(group => {
         const currentAttrObj = v.attributes?.find(a => a.name === group.name);
         return currentAttrObj ? currentAttrObj.value === selectedAttrs[group.name] : true;
       });
     });
-
     if (matchingVars.length === 0) return variations.find(v => checkStockGlobally(v)) || variations[0];
 
     let accPrice: number | null = null;
@@ -129,7 +135,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
       if (mv.parsedCodePrice != null && mv.parsedCodePrice !== 'disabled') {
           accCode = (accCode === 'disabled' ? mv.parsedCodePrice : Math.min(accCode as number, mv.parsedCodePrice as number)) as number | 'disabled';
       }
-
       const comboAttributesText = mv.attributes?.map(a => a.value.toLowerCase()).join(' ') || "";
       if (comboAttributesText.includes('گیفت') || comboAttributesText.includes('gift')) {
           if (mv.parsedPrice != null && accGift === 'disabled') accGift = mv.parsedPrice;
@@ -145,28 +150,23 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
       parsedGiftPrice: accGift,
       parsedCodePrice: accCode,
     } as VariationCard;
-    
   }, [variations, selectedAttrs, groupedAttributes]);
 
   const allGalleryImages = useMemo(() => {
     const images = new Set<string>();
-    
     if (product.image?.sourceUrl?.trim()) {
       images.add(product.image.sourceUrl.trim());
     }
-    
     variations.forEach(v => {
       if (v.imageUrl?.trim()) {
         images.add(v.imageUrl.trim());
       }
     });
-    
     product.galleryImages?.nodes?.forEach((g: any) => {
       if (g.sourceUrl?.trim()) {
         images.add(g.sourceUrl.trim());
       }
     });
-    
     return Array.from(images);
   }, [product, variations]);
 
@@ -174,7 +174,6 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
     if (variations.length === 0 || groupedAttributes.length === 0) return null;
     const firstGroup = groupedAttributes[0];
     const selectedValForFirstGroup = selectedAttrs[firstGroup.name];
-    
     const matched = variations.find(v => 
       v.attributes?.some(a => a.name === firstGroup.name && a.value === selectedValForFirstGroup) && v.imageUrl
     );
@@ -207,17 +206,13 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
     const containerWidth = containerRef.current.offsetWidth;
     const thumbnailWidth = 100; 
     const gapWidth = 8; 
     const itemWidthWithGap = thumbnailWidth + gapWidth;
-    
     const totalTrackWidth = allGalleryImages.length * thumbnailWidth + (allGalleryImages.length - 1) * gapWidth;
     const maxScroll = Math.max(0, totalTrackWidth - containerWidth);
-    
     const targetOffset = (currentIndex * itemWidthWithGap) - (containerWidth / 2) + (thumbnailWidth / 2);
-    
     setTrackOffset(Math.min(maxScroll, Math.max(0, targetOffset)));
   }, [currentIndex, allGalleryImages]);
 
@@ -228,39 +223,48 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
       
       for (let i = changeLevelIndex + 1; i < groupedAttributes.length; i++) {
         const nextTargetGroup = groupedAttributes[i];
-        
         const isStillFunctioning = variations.some(v => {
            const validatesUpToCurrentLayer = groupedAttributes.slice(0, i + 1).every(groupLayer => 
               v.attributes?.some(a => a.name === groupLayer.name && a.value === draftAttrs[groupLayer.name])
            );
            return validatesUpToCurrentLayer && checkStockGlobally(v);
         });
-        
         if (!isStillFunctioning) {
           const viableEscapeVal = nextTargetGroup.values.find(candVal => {
              return variations.some(v => {
                 const pastLayers = groupedAttributes.slice(0, i).every(upLevelG => 
                   v.attributes?.some(a => a.name === upLevelG.name && a.value === draftAttrs[upLevelG.name])
                 );
-                const isMatchingEscape = v.attributes?.some(a => a.name === nextTargetGroup.name && a.value === candVal);
+                const isMatchingEscape = v.attributes?.some(a => a.name === nextTargetGroup.name && a.value === candVal.value);
                 return pastLayers && isMatchingEscape && checkStockGlobally(v);
              });
           });
-          draftAttrs[nextTargetGroup.name] = viableEscapeVal || nextTargetGroup.values[0];
+          draftAttrs[nextTargetGroup.name] = viableEscapeVal ? viableEscapeVal.value : nextTargetGroup.values[0].value;
         }
       }
-
       if (changeLevelIndex === 0) {
         setSelectedGalleryImage(null);
       }
-
       return draftAttrs;
     });
   };
 
+  const handleReviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReview.author || !newReview.content) return;
+    const reviewItem: Review = {
+      id: Date.now(),
+      author: newReview.author,
+      rating: newReview.rating,
+      date: "۱۴۰۵/۰۳/۰۲",
+      content: newReview.content
+    };
+    setReviews([reviewItem, ...reviews]);
+    setNewReview({ author: "", rating: 5, content: "" });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 min-h-screen" dir="rtl">
-      
       <div className="lg:col-span-4 lg:order-first flex flex-col gap-6 sticky top-10 h-fit">
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -271,9 +275,11 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
             )}
           </div>
           <h1 className="text-2xl md:text-3xl font-black text-brand-active leading-tight">{product.name}</h1>
-          <div className="mt-3 inline-block bg-brand-zard text-brand-menu text-xs px-2 py-2.5 font-medium">
-             نوتیف کوتاه
-          </div>
+          {product.shortNotify && (
+            <div className="mt-3 bg-brand-zard text-brand-menu text-xs px-3 py-2.5 font-medium border-r-4 border-brand-blue">
+               {product.shortNotify}
+            </div>
+          )}
         </div>
 
         <VariationSelector 
@@ -286,14 +292,17 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         <DeliveryAndPrice selectedVariation={combinedAggregateVar || variations[0]} />
       </div>
 
-      <div className="lg:col-span-8 lg:order-last flex flex-col gap-3">
+      <div className="lg:col-span-8 lg:order-last flex flex-col gap-8">
         <div className="relative w-full aspect-[16/9] bg-brand-surface overflow-hidden border border-brand-surface_hover transition-all duration-300 shadow-lg group">
           <Image 
             src={displayImage} 
             alt={product.name} 
             fill
-            className="object-cover transition-opacity duration-300"
             priority
+            loading="eager"
+            quality={90}
+            className="object-cover transition-opacity duration-300"
+            sizes="(max-width: 1024px) 100vw, 80vw"
           />
 
           {allGalleryImages.length > 1 && (
@@ -340,7 +349,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
                         : 'border-brand-surface_hover opacity-40 hover:opacity-80'
                     }`}
                   >
-                    <Image src={imgUrl} alt={`گالری ${idx + 1}`} fill className="object-cover" />
+                    <Image src={imgUrl} alt={`گالری ${idx + 1}`} fill quality={75} className="object-cover" />
                   </button>
                 );
               })}
@@ -348,17 +357,106 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
           </div>
         )}
 
-        {product.description && (
-          <div className="bg-brand-menu p-6 ">
-            <h3 className="text-lg font-bold text-brand-active mb-4">توضیحات محصول</h3>
+        {product.shortDescription && (
+          <div className="bg-brand-menu p-6 border border-brand-surface_hover">
             <div 
               className="text-brand-surface_m text-sm leading-8 prose prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: product.description }} 
+              dangerouslySetInnerHTML={{ __html: product.shortDescription }} 
             />
           </div>
         )}
-      </div>
 
+        {product.secondaryGallery && product.secondaryGallery.length > 0 && (
+          <div className="w-full flex flex-col md:flex-row gap-6 border-t border-brand-surface_hover pt-8">
+            <div className="w-full md:w-1/5">
+              <h3 className="text-lg font-bold text-brand-active border-r-4 border-brand-blue pr-2">گالری محصول</h3>
+            </div>
+            <div className="w-full md:w-4/5 flex flex-col gap-6">
+              {product.secondaryGallery.map((item: any, index: number) => (
+                <div key={index} className="flex flex-col gap-4">
+                  {item.imageUrl && (
+                    <div className="relative w-full aspect-[16/9] bg-brand-surface overflow-hidden border border-brand-surface_hover shadow-md">
+                      <Image src={item.imageUrl} alt="" fill quality={85} className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" />
+                    </div>
+                  )}
+                  {item.description && (
+                    <p className="text-brand-surface_m text-sm leading-8 bg-brand-menu/40 p-4 rounded">{item.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {product.description && (
+          <div className="w-full flex flex-col md:flex-row gap-6 border-t border-brand-surface_hover pt-8">
+            <div className="w-full md:w-1/5">
+              <h3 className="text-lg font-bold text-brand-active border-r-4 border-brand-blue pr-2">توضیحات محصول</h3>
+            </div>
+            <div className="w-full md:w-4/5">
+              <div 
+                className="text-brand-surface_m text-sm leading-8 prose prose-invert max-w-none bg-brand-menu p-6 border border-brand-surface_hover"
+                dangerouslySetInnerHTML={{ __html: product.description }} 
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="w-full flex flex-col md:flex-row gap-6 border-t border-brand-surface_hover pt-8">
+          <div className="w-full md:w-1/5">
+            <h3 className="text-lg font-bold text-brand-active border-r-4 border-brand-blue pr-2">نظرات کاربران</h3>
+          </div>
+          <div className="w-full md:w-4/5 flex flex-col gap-6">
+            <form onSubmit={handleReviewSubmit} className="bg-brand-menu p-6 border border-brand-surface_hover flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input 
+                  type="text" 
+                  placeholder="نام شما" 
+                  value={newReview.author}
+                  onChange={e => setNewReview({...newReview, author: e.target.value})}
+                  className="bg-brand-surface border border-brand-surface_hover p-3 text-sm text-brand-active focus:border-brand-blue outline-none"
+                />
+                <select 
+                  value={newReview.rating} 
+                  onChange={e => setNewReview({...newReview, rating: Number(e.target.value)})}
+                  className="bg-brand-surface border border-brand-surface_hover p-3 text-sm text-brand-active focus:border-brand-blue outline-none"
+                >
+                  <option value="5">۵ ستاره (عالی)</option>
+                  <option value="4">۴ ستاره</option>
+                  <option value="3">۳ ستاره</option>
+                  <option value="2">۲ ستاره</option>
+                  <option value="1">۱ ستاره</option>
+                </select>
+              </div>
+              <textarea 
+                placeholder="متن نظر شما..." 
+                rows={4}
+                value={newReview.content}
+                onChange={e => setNewReview({...newReview, content: e.target.value})}
+                className="bg-brand-surface border border-brand-surface_hover p-3 text-sm text-brand-active focus:border-brand-blue outline-none resize-none"
+              />
+              <button type="submit" className="bg-brand-blue text-brand-active text-sm font-bold py-3 px-6 hover:bg-brand-blue/80 transition-colors self-start">ثبت نظر</button>
+            </form>
+
+            <div className="flex flex-col gap-4">
+              {reviews.map(review => (
+                <div key={review.id} className="bg-brand-menu p-5 border border-brand-surface_hover flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-brand-active">{review.author}</span>
+                    <span className="text-xs text-brand-m_khonsa">{review.date}</span>
+                  </div>
+                  <div className="flex gap-1 text-brand-zard text-xs">
+                    {Array.from({ length: review.rating }).map((_, i) => (
+                      <span key={i}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-brand-surface_m text-sm leading-7 mt-2">{review.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
