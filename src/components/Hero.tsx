@@ -5,7 +5,7 @@ import Image from "next/image";
 import Button from "@/components/ui/Button";
 
 interface Banner {
-  "second-image": string;
+  "secondimage": string;
   subtitle: string;
   link: string;
   imageUrl: string;
@@ -69,10 +69,10 @@ export default function CategoryHero({ banners }: Props) {
 
         <div key={activeIndex} className="relative h-full flex flex-col justify-center px-6 md:px-12 w-full max-w-2xl z-30 animate-in fade-in duration-700">
           {/* رندر تصویر لوگوی بازی به جای تایتل متنی با سایزبندی استاندارد بتل‌نت */}
-          {currentBanner["second-image"] && (
+          {currentBanner["secondimage"] && (
             <div className="relative w-48 h-16 md:w-64 md:h-24 mb-2">
               <Image
-                src={currentBanner["second-image"]}
+                src={currentBanner["secondimage"]}
                 alt="Banner Logo"
                 fill
                 className="object-contain object-right"

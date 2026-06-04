@@ -128,7 +128,7 @@ export const PRODUCT_CARD_FIELDS = `
 
 export const BANNER_FIELDS = `
   fragment BannerFields on CategoryBannerItem {
-    secondImage
+    secondimage
     subtitle
     imageUrl
     link
