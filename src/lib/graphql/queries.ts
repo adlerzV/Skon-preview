@@ -1,4 +1,4 @@
-//توابع اصلی دریافت دیتا (ارتباط با صفحات نکس)
+// توابع اصلی دریافت دیتا (ارتباط با صفحات نکس)
 import { fetchGraphQL } from './client';
 import { formatProducts } from './utils';
 import { HeaderCategoryNode, ProductNode } from './types';

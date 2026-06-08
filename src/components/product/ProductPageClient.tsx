@@ -348,7 +348,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         </div>
       </div>
 
-      {/* بخش دوم: ۱۰۰ درصد - آیتم‌های محصول */}
+      {/* بخش دوم: آیتم‌های محصول */}
       {product.secondaryGallery && product.secondaryGallery.length > 0 && (
         <div className="w-full border-t border-brand-surface_hover pt-8 flex flex-col gap-6">
           <h2 className="text-xl font-black text-brand-active border-r-4 border-brand-blue pr-3">
@@ -371,7 +371,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         </div>
       )}
 
-      {/* بخش سوم: ۱۰۰ درصد - توضیحات تکمیلی محصول */}
+      {/* بخش سوم: توضیحات تکمیلی محصول */}
       {product.description && (
         <div className="w-full border-t border-brand-surface_hover pt-8 flex flex-col gap-6">
           <h2 className="text-xl font-black text-brand-active border-r-4 border-brand-blue pr-3">
@@ -384,7 +384,7 @@ export default function ProductPageClient({ product, initialEdition }: Props) {
         </div>
       )}
 
-      {/* بخش چهارم: نظرات کاربران (کامپوننت مجزا) */}
+      {/* بخش چهارم: نظرات کاربران */}
       <ProductReviews />
 
     </div>

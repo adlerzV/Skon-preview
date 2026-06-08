@@ -1,4 +1,4 @@
-//فرگمنت‌های گراف‌کیوال برای جلوگیری از تکرار کوئری‌ها
+// فرگمنت‌های گراف‌کیوال برای جلوگیری از تکرار کوئری‌ها
 export const PRODUCT_CARD_FIELDS = `
   fragment ProductCardFields on Product {
     id
@@ -44,6 +44,7 @@ export const PRODUCT_CARD_FIELDS = `
         codeRegularPriceToman
         attributes {
           name
+          taxonomy
           value
           slug
           flagUrl

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header/Header";
+import SubHeaderBar from "@/components/Header/SubHeaderBar";
 import { CartProvider } from "@/constants/CartContext";
 
 const yekanFont = localFont({
@@ -25,6 +26,7 @@ export default function RootLayout({
         {/* رپ کردن کل برنامه با کانتکست سبد خرید */}
         <CartProvider>
           <Header /> 
+          <SubHeaderBar />
           {children}
         </CartProvider>
       </body>

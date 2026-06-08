@@ -7,7 +7,7 @@ export interface VariationCard {
   regularPrice: string;
   salePrice: string;
   imageUrl: string;
-  attributes: Array<{ name: string; value: string; slug: string; flagUrl: string }>; // فیلد slug اضافه شد
+  attributes: Array<{ name: string; value: string; slug: string; flagUrl: string }>;
   giftPriceToman: string;
   giftRegularPriceToman?: string;
   codePriceToman: string;

@@ -1,0 +1,86 @@
+// components/Header/SubHeaderBarClient.tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import RegionSwitcher from "./RegionSwitcher";
+
+interface Region {
+  name: string;
+  slug: string;
+  flagUrl?: string;
+}
+
+export default function SubHeaderBarClient({ regions }: { regions: Region[] }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  if (pathname === "/") return null;
+
+  const pathSegments = pathname.split("/").filter((item) => item);
+  const edition = searchParams.get("edition");
+
+  const isShop = !pathname.startsWith("/blog") && 
+                 !["/download", "/support", "/guild-portal"].includes(pathname);
+
+  const getSegmentLabel = (segment: string) => {
+    const maps: Record<string, string> = {
+      blog: "بلاگ",
+      download: "دانلود بازی",
+      support: "پشتیبانی",
+      "guild-portal": "پورتال گیلد",
+    };
+    return maps[segment] || decodeURIComponent(segment).replace(/-/g, " ");
+  };
+
+  return (
+    <div className="w-full bg-[#111318] border-b border-brand-surface/20" dir="rtl">
+      <div className="w-full container mx-auto px-6 max-w-[1600px] h-[50px] flex items-center justify-between">
+        
+        {/* مپ سمت راست */}
+        <nav className="flex items-center gap-2 text-[13px] font-medium text-white/90">
+          <Link href="/" className="hover:text-brand-white transition-colors flex items-center gap-1">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </Link>
+
+          {pathSegments.map((segment, index) => {
+            const href = `/${pathSegments.slice(0, index + 1).join("/")}`;
+            const isLast = index === pathSegments.length - 1 && !edition;
+            const label = getSegmentLabel(segment);
+
+            return (
+              <div key={href} className="flex items-center gap-2">
+                <span className="text-white/30 text-[11px] font-bold">/</span>
+                {isLast ? (
+                  <span className="text-white/60 select-none">{label}</span>
+                ) : (
+                  <Link href={href} className="hover:text-brand-white transition-colors">
+                    {label}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+
+          {edition && (
+            <div className="flex items-center gap-2">
+              <span className="text-white/30 text-[11px] font-bold">/</span>
+              <span className="text-white/60 select-none">{decodeURIComponent(edition)}</span>
+            </div>
+          )}
+        </nav>
+
+        {/* سوییچر سمت چپ با دیتای داینامیک */}
+        {isShop ? (
+          <RegionSwitcher regions={regions} />
+        ) : (
+          <div className="text-white/40 text-[12px]"></div>
+        )}
+
+      </div>
+    </div>
+  );
+}

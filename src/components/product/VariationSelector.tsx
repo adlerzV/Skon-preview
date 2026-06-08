@@ -61,7 +61,6 @@ export default function VariationSelector({
               انتخاب {cleanName}:
             </span>
 
-            {/* ریجن‌ها در دسکتاپ تک ردیف، لپ‌تاپ به پایین گرید ۲ ستونه */}
             <div 
               className={
                 isRegion 
