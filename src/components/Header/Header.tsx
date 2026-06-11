@@ -7,16 +7,19 @@ import MobileMenu from "./MobileMenu";
 import HeaderSearch from "./HeaderSearch";
 import HeaderMenuSwitcher from "./HeaderMenuSwitcher";
 import HeaderCart from "./HeaderCart";
+import RegionSwitcher from "./RegionSwitcher"; // اضافه شد
 
-import { getHeaderCategories, getHeaderBlogCategories } from "@/lib/graphql"; 
+import { getHeaderCategories, getHeaderBlogCategories, getRegions } from "@/lib/graphql"; // getRegions اضافه شد
 
 const ACTION_BUTTON_CLASSES = "flex items-center gap-2.5 px-3 py-4 cursor-pointer text-brand-m_khonsa text-[14px] font-semibold transition-colors duration-150 hover:bg-brand-surface hover:text-white";
 const ICON_WRAPPER_CLASSES = "flex items-center justify-center rounded-full w-5 h-5 text-brand-surface_m shrink-0";
 
 export default async function Header() {
-  const [shopGames, blogCats] = await Promise.all([
+  // گرفتن همزمان دسته‌بندی‌ها، بلاگ‌ها و ریژن‌ها برای پرفورمنس بهتر
+  const [shopGames, blogCats, regions] = await Promise.all([
     getHeaderCategories(),
-    getHeaderBlogCategories()
+    getHeaderBlogCategories(),
+    getRegions().catch(() => [])
   ]);
 
   return (
@@ -69,10 +72,9 @@ export default async function Header() {
 
           <HeaderSearch />
 
-          <div className="flex items-center justify-center h-full bg-brand-surface hover:bg-brand-surface_hover duration-150 overflow-hidden group rounded-[5px]">
-            <Link href="/guild-portal" className="flex items-center justify-center h-full px-7 text-brand-m_khonsa text-[15px] font-semibold hover:text-brand-white duration-150 transition-colors relative">
-              پورتال گیلد
-            </Link>
+          {/* ریژن سوییچر جایگزین پورتال گیلد شد */}
+          <div className="flex items-center justify-center h-full">
+            <RegionSwitcher regions={regions} />
           </div>
         </div>
       </div>

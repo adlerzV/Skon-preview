@@ -32,7 +32,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
   }
 
   return (
-    <main className="container mx-auto px-6 py-12 max-w-[1600px]">
+    <main className="container mx-auto px-6 py-5 max-w-site">
       <ProductPageClient 
         product={product} 
         initialEdition={resolvedSearchParams.edition} 

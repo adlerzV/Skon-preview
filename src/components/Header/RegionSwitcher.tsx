@@ -52,7 +52,7 @@ export default function RegionSwitcher({ regions }: { regions: Region[] }) {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-brand-surface hover:bg-brand-surface_hover text-white text-[13px] font-semibold rounded-[4px] border border-white/5 transition-colors duration-150 cursor-pointer"
+        className="flex items-center gap-2 px-3 h-[60px] bg-brand-surface hover:bg-brand-surface_hover text-white text-[13px] font-semibold  transition-colors duration-150 cursor-pointer"
       >
         {currentRegion.flagUrl && (
           <div className="relative w-5 h-3.5 overflow-hidden rounded-[2px] shrink-0">
