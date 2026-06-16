@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
+import { ChevronRight, ChevronLeft, Play, Pause } from "lucide-react";
 
 interface Banner {
   "secondimage": string;
@@ -42,7 +43,7 @@ export default function CategoryHero({ banners }: Props) {
   const currentBanner = banners[activeIndex];
 
   return (
-    <div dir="rtl" className="w-full max-w-[1600px] mx-auto font-sans group px-2 md:px-0">
+    <div dir="rtl" className="w-full max-w-[1600px] mx-auto font-sans group md:px-0">
       <section className="relative w-full h-[350px] md:h-[350px] mt-1 bg-brand-bg overflow-hidden ">
         <div className="absolute inset-0 bg-[#111215]">
           {banners.map((banner, index) => (
@@ -62,13 +63,11 @@ export default function CategoryHero({ banners }: Props) {
               />
             </div>
           ))}
-          {/* اعمال اوپسیتی گرادینت زیرین فقط برای تبلت کوچک به پایین و حذف آن در دسکتاپ */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#111215] via-transparent to-transparent opacity-90 md:opacity-0 z-20"></div>
           <div className="absolute inset-0 bg-gradient-to-l from-[#111215] via-[#111215]/80 to-transparent w-full md:w-2/3 z-20"></div>
         </div>
 
         <div key={activeIndex} className="relative h-full flex flex-col justify-center px-6 md:px-12 w-full max-w-2xl z-30 animate-in fade-in duration-700">
-          {/* رندر تصویر لوگوی بازی به جای تایتل متنی با سایزبندی استاندارد بتل‌نت */}
           {currentBanner["secondimage"] && (
             <div className="relative w-48 h-16 md:w-64 md:h-24 mb-2">
               <Image
@@ -85,7 +84,7 @@ export default function CategoryHero({ banners }: Props) {
           </p>
           <div className="flex">
             <Button href={currentBanner.link || "#"} variant="primary">
-               مشاهده و خرید
+               مشاهدہ و خرید
             </Button>
           </div>
         </div>
@@ -94,18 +93,20 @@ export default function CategoryHero({ banners }: Props) {
           <>
             <Button 
               variant="icon" 
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-40"
+              className="absolute right-4 top-1/2 -translate-y-1/2 h-[80px] z-40"
               onClick={() => { handlePrev(); setIsPlaying(false); }}
+              aria-label="قبلی"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              <ChevronRight size={24} strokeWidth={3} />
             </Button>
 
             <Button 
               variant="icon" 
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-40"
+              className="absolute left-4 top-1/2 -translate-y-1/2 h-[80px] z-40"
               onClick={() => { handleNext(); setIsPlaying(false); }}
+              aria-label="بعدی"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              <ChevronLeft size={24} strokeWidth={3} />
             </Button>
           </>
         )}
@@ -114,11 +115,11 @@ export default function CategoryHero({ banners }: Props) {
       {banners.length > 1 && (
         <div className="flex items-center justify-center gap-4 mt-3">
           
-          <Button variant="ghost" onClick={() => setIsPlaying(!isPlaying)}>
+          <Button variant="ghost" onClick={() => setIsPlaying(!isPlaying)} aria-label={isPlaying ? "توقف اسلایدر" : "پخش اسلایدر"}>
             {isPlaying ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="15" y="4" width="4" height="16" rx="1"/></svg>
+              <Pause size={18} fill="currentColor" stroke="none" />
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l15 8-15 8z"/></svg>
+              <Play size={18} fill="currentColor" stroke="none" />
             )}
           </Button>
 

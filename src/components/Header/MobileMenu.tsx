@@ -8,6 +8,7 @@ import { useProductSearch } from "./hooks/useProductSearch";
 import MiniSearchCard from "./MiniSearchCard";
 import { useCart } from "@/context/CartContext";
 import Skeleton from "@/components/ui/Skeleton";
+import { Menu, Search, User, ShoppingCart, X, ChevronDown } from "lucide-react";
 
 interface MobileMenuItem {
   title: string;
@@ -72,7 +73,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
           className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors"
           aria-label="Open Menu"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <Menu size={24} strokeWidth={2.5} />
         </button>
         <Link href="/" className="flex items-center justify-center" aria-label="Home">
           <Image 
@@ -92,15 +93,15 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
             className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors"
             aria-label="Toggle Search"
           >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <Search size={20} strokeWidth={2.5} />
           </button>
 
           <Link href="/my-account" className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors" aria-label="حساب کاربری">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <User size={20} strokeWidth={2.5} />
           </Link>
           
           <Link href="/cart" className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors relative" aria-label="سبد خرید">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <ShoppingCart size={20} strokeWidth={2.5} />
             {cartCount > 0 && (
               <span className="absolute top-1.5 right-1.5 bg-brand-blue text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{cartCount}</span>
             )}
@@ -134,7 +135,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
               <span className="w-4 h-4 border-2 border-transparent border-t-brand-blue rounded-full animate-spin"></span>
             ) : (
               <button type="submit" aria-label="Submit Search">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-brand-m_khonsa hover:text-white"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <Search size={16} strokeWidth={2.5} className="text-brand-m_khonsa hover:text-white" />
               </button>
             )}
             <button 
@@ -143,7 +144,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
               className="text-brand-m_khonsa hover:text-white transition-colors p-1"
               aria-label="Close Search"
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <X size={18} strokeWidth={3} />
             </button>
           </div>
         </form>
@@ -191,7 +192,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
         <div className="flex items-center justify-between h-[60px] px-5 border-b border-brand-surface shrink-0">
           <span className="text-white font-bold text-base">منوی سایت</span>
           <button onClick={() => setIsOpen(false)} className="text-brand-m_khonsa hover:text-white transition-colors">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <X size={22} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -203,7 +204,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
             <div className="flex flex-col w-full">
               <button onClick={() => setShopOpen(!shopOpen)} className="flex items-center justify-between p-4 text-sm font-bold text-brand-white hover:bg-brand-surface/30 transition-colors border-b border-brand-surface bg-transparent outline-none">
                 {isBlogSection ? "دسته‌بندی‌های اخبار" : "بازی‌ها"}
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${shopOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6"></path></svg>
+                <ChevronDown size={14} strokeWidth={3} className={`transition-transform duration-200 ${shopOpen ? "rotate-180" : ""}`} />
               </button>
               <div className={`grid grid-cols-4 gap-2 bg-[#111215] border-t border-[#23252b] transition-all overflow-hidden ${shopOpen ? "max-h-[500px] p-2.5 opacity-100" : "max-h-0 p-0 opacity-0"}`}>
                 {activeData.map((game, i) => (
@@ -234,7 +235,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
              onTouchStart={() => router.prefetch("/cart")}
              className="flex items-center justify-center gap-2.5 w-full bg-brand-surface hover:bg-brand-surface_hover text-white py-3 rounded-md text-sm font-bold border border-white/5 transition-colors relative"
            >
-             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+             <ShoppingCart size={18} strokeWidth={2.5} />
              <span>سبد خرید شما</span>
              {cartCount > 0 && (
                <span className="bg-brand-blue text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">{cartCount}</span>

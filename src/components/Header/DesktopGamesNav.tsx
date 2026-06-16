@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Skeleton from "@/components/ui/Skeleton";
+import { Plus } from "lucide-react";
 
 export interface HeaderGameItem {
   title: string;
@@ -75,7 +76,7 @@ export default function DesktopGamesNav({ games }: DesktopGamesNavProps) {
   }
 
   return (
-    <div className="flex-1 h-full px-2 flex items-center contain-inline-size w-full" ref={containerRef}>
+    <div className="flex-1 h-full flex items-center contain-inline-size w-full" ref={containerRef}>
       <div className="flex items-center h-full w-full justify-start">
         {visible.map((game) => {
           const isActive = pathname === game.link || pathname?.startsWith(`${game.link}/`);
@@ -110,13 +111,10 @@ export default function DesktopGamesNav({ games }: DesktopGamesNavProps) {
         {hidden.length > 0 && (
           <div className="relative group flex items-center h-full w-[50px]">
             <button
-              aria-label="مشاهده بازی‌های بیشتر"
+              aria-label="مشاهدہ بازی‌های بیشتر"
               className="flex items-center justify-center w-full h-full text-brand-m_khonsa hover:text-white transition-colors border-b-[3px] border-transparent hover:bg-white/5 opacity-80 hover:opacity-100"
             >
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+              <Plus size={20} strokeWidth={2.5} />
             </button>
             <div className="absolute top-[60px] right-0 bg-[#15171e] border border-white/5 rounded-lg opacity-0 invisible translate-y-1.5 transition-all duration-150 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 p-3 z-[1000] min-w-[280px] shadow-[0_15px_30px_rgba(0,0,0,0.6)] will-change-transform">
               <div className="grid grid-cols-4 gap-2">

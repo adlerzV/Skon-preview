@@ -8,6 +8,7 @@ import HeaderSearch from "./HeaderSearch";
 import HeaderMenuSwitcher from "./HeaderMenuSwitcher";
 import HeaderCart from "./HeaderCart";
 import RegionSwitcher from "./RegionSwitcher";
+import { Download, HelpCircle } from "lucide-react";
 
 import { getHeaderCategories, getHeaderBlogCategories, getRegions } from "@/lib/graphql";
 
@@ -43,22 +44,14 @@ export default async function Header() {
         <div className="flex items-center">
           <Link href="/download" className={ACTION_BUTTON_CLASSES}>
             <span className={ICON_WRAPPER_CLASSES}>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
+              <Download size={18} strokeWidth={2.5} />
             </span>
             <span>دانلود بازی</span>
           </Link>
 
           <Link href="/support" className={ACTION_BUTTON_CLASSES}>
             <span className={ICON_WRAPPER_CLASSES}>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
+              <HelpCircle size={18} strokeWidth={2.5} />
             </span>
             <span>پشتیبانی</span>
           </Link>
