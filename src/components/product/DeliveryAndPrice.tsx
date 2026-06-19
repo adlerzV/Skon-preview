@@ -11,7 +11,8 @@ interface DeliveryAndPriceProps {
 export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPriceProps) {
   const { addToCart } = useCart();
 
-  // ✅ همه هوک‌ها قبل از هر return تعریف میشن (Rules of Hooks)
+  const [isMounted, setIsMounted] = useState(false);
+  
   const [deliveryType, setDeliveryType] = useState<"direct" | "gift" | "code" | null>(null);
   const [accountIdentifier, setAccountIdentifier] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
@@ -20,27 +21,35 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
   const [verifyStatus, setVerifyStatus] = useState<"idle" | "success" | "error">("idle");
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  const isDirectDisabled = !selectedVariation || selectedVariation.parsedPrice === null || selectedVariation.parsedPrice === undefined;
-  const isGiftDisabled = !selectedVariation || selectedVariation.parsedGiftPrice === "disabled" || selectedVariation.parsedGiftPrice === null || selectedVariation.parsedGiftPrice === undefined;
-  const isCodeDisabled = !selectedVariation || selectedVariation.parsedCodePrice === "disabled" || selectedVariation.parsedCodePrice === null || selectedVariation.parsedCodePrice === undefined;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isDirectDisabled = !isMounted || !selectedVariation || selectedVariation.parsedPrice === null || selectedVariation.parsedPrice === undefined;
+  const isGiftDisabled = !isMounted || !selectedVariation || selectedVariation.parsedGiftPrice === "disabled" || selectedVariation.parsedGiftPrice === null || selectedVariation.parsedGiftPrice === undefined;
+  const isCodeDisabled = !isMounted || !selectedVariation || selectedVariation.parsedCodePrice === "disabled" || selectedVariation.parsedCodePrice === null || selectedVariation.parsedCodePrice === undefined;
 
   useEffect(() => {
     if (!selectedVariation) {
       setDeliveryType(null);
       return;
     }
-    if (!isDirectDisabled) {
+    
+    const directDisabled = selectedVariation.parsedPrice === null || selectedVariation.parsedPrice === undefined;
+    const giftDisabled = selectedVariation.parsedGiftPrice === "disabled" || selectedVariation.parsedGiftPrice === null || selectedVariation.parsedGiftPrice === undefined;
+    const codeDisabled = selectedVariation.parsedCodePrice === "disabled" || selectedVariation.parsedCodePrice === null || selectedVariation.parsedCodePrice === undefined;
+
+    if (!directDisabled) {
       setDeliveryType("direct");
-    } else if (!isGiftDisabled) {
+    } else if (!giftDisabled) {
       setDeliveryType("gift");
-    } else if (!isCodeDisabled) {
+    } else if (!codeDisabled) {
       setDeliveryType("code");
     } else {
       setDeliveryType(null);
     }
-  }, [selectedVariation, isDirectDisabled, isGiftDisabled, isCodeDisabled]);
+  }, [selectedVariation]);
 
-  // ✅ early return بعد از همه هوک‌ها
   if (!selectedVariation) {
     return (
       <div className="text-brand-surface_m text-sm text-center py-4 bg-brand-surface border border-brand-surface_hover">

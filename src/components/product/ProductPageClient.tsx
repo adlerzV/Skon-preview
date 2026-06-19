@@ -26,6 +26,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
   const containerRef = useRef<HTMLDivElement>(null);
   const [trackOffset, setTrackOffset] = useState(0);
 
+  // مرحله ۳: استخراج اتریبیوت‌های نمایشی و حذف کامل ریجن از لایه نمایش UI
   const groupedAttributes = useMemo(() => {
     const map = new Map<string, Set<{ value: string; flagUrl: string }>>();
     variations.forEach(v => {
@@ -42,15 +43,18 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     map.forEach((values, name) => {
       const normalize = (s: string) => s.replace(/ي/g, 'ی').replace(/ك/g, 'ک').toLowerCase();
       const normalizedName = normalize(name);
+      
       const isDeliveryAttr =
         normalizedName.includes('delivery') ||
         normalizedName.includes('تحویل') ||
         normalizedName.includes('روش') ||
         normalizedName.includes('method');
+        
       const isDeliveryVal = Array.from(values).some(item => {
         const v = normalize(item.value);
         return v.includes('گیفت') || v.includes('مستقیم') || v.includes('کد') || v.includes('gift') || v.includes('direct');
       });
+
       const isRegionAttr =
         normalizedName.includes('region') ||
         normalizedName.includes('ریجن');
@@ -66,89 +70,99 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     }));
   }, [variations]);
 
+  // منطق پیدا کردن نام اتریبیوت ریجن در کل واریاسیون‌ها و مچ کردن مقدار آن با activeRegion هدر
+  const regionInfo = useMemo(() => {
+    let repoName = "";
+    const values = new Set<string>();
+
+    variations.forEach(v => {
+      v.attributes?.forEach(a => {
+        const clean = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
+        if (clean.includes('region') || clean.includes('ریجن')) {
+          repoName = a.name;
+          values.add(a.value);
+        }
+      });
+    });
+
+    if (!repoName || !activeRegion) return null;
+
+    const matchedValue = Array.from(values).find(val => {
+      const valLower = val.toLowerCase();
+      const regionLower = activeRegion.toLowerCase();
+      return valLower === regionLower || 
+             (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
+             (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
+    });
+
+    return matchedValue ? { name: repoName, value: matchedValue } : null;
+  }, [variations, activeRegion]);
+
+  // پیدا کردن اولین اتریبیوت معتبر با در نظر گرفتن ریجن مخفی
   const findFirstValidAttributes = useCallback(
     (targetEdition?: string): Record<string, string> => {
       const resultAttrs: Record<string, string> = {};
+      
+      // چپاندن مخفیانه ریجن فعال به اتریبیوت‌های انتخابی
+      if (regionInfo) {
+        resultAttrs[regionInfo.name] = regionInfo.value;
+      }
+
       if (variations.length === 0 || groupedAttributes.length === 0) return resultAttrs;
 
       for (let i = 0; i < groupedAttributes.length; i++) {
         const group = groupedAttributes[i];
-
         if (i === 0 && targetEdition && group.values.some(v => v.value === targetEdition)) {
           resultAttrs[group.name] = targetEdition;
           continue;
         }
-
         const validOpt = group.values.find(candidate =>
           variations.some(v => {
             const matchesPreceding = groupedAttributes.slice(0, i).every(prevG =>
               v.attributes?.some(a => a.name === prevG.name && a.value === resultAttrs[prevG.name])
             );
             const matchesCandidate = v.attributes?.some(a => a.name === group.name && a.value === candidate.value);
+            const matchesRegion = regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true;
             
-            if (activeRegion) {
-              const regionAttr = v.attributes?.find(a => {
-                const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
-                return cleanName.includes('region') || cleanName.includes('ریجن');
-              });
-              if (regionAttr) {
-                const valLower = regionAttr.value.toLowerCase();
-                const regionLower = activeRegion.toLowerCase();
-                const isRegionMatch = valLower === regionLower || 
-                                      (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
-                                      (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
-                if (!isRegionMatch) return false;
-              }
-            }
-
-            return matchesPreceding && matchesCandidate && checkStockGlobally(v);
+            return matchesPreceding && matchesCandidate && matchesRegion && checkStockGlobally(v);
           })
         );
         resultAttrs[group.name] = validOpt ? validOpt.value : group.values[0].value;
       }
       return resultAttrs;
     },
-    [variations, groupedAttributes, activeRegion]
+    [variations, groupedAttributes, regionInfo]
   );
 
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() =>
     findFirstValidAttributes(initialEdition)
   );
 
+  // واکنش به تغییر ریجن هدر یا ادیشن اولیه و آپدیت استیت اتریبیوت‌ها
   useEffect(() => {
     setSelectedAttrs(findFirstValidAttributes(initialEdition));
-  }, [initialEdition, activeRegion, findFirstValidAttributes]);
+  }, [initialEdition, regionInfo, findFirstValidAttributes]);
 
+  // مرحله ۴: اصلاح منطق ست شدن واریاسیون نهایی و محاسبه دقیق قیمت کف ریجن فعال
   const combinedAggregateVar = useMemo(() => {
     if (variations.length === 0) return null;
 
     const matchingVars = variations.filter(v => {
-      const matchesVisibleAttrs = groupedAttributes.every(group => {
+      const matchesVisible = groupedAttributes.every(group => {
         const currentAttrObj = v.attributes?.find(a => a.name === group.name);
         return currentAttrObj ? currentAttrObj.value === selectedAttrs[group.name] : true;
       });
-
-      if (!matchesVisibleAttrs) return false;
-
-      if (activeRegion) {
-        const regionAttr = v.attributes?.find(a => {
-          const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
-          return cleanName.includes('region') || cleanName.includes('ریجن');
-        });
-        if (regionAttr) {
-          const valLower = regionAttr.value.toLowerCase();
-          const regionLower = activeRegion.toLowerCase();
-          const isRegionMatch = valLower === regionLower || 
-                                (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
-                                (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
-          if (!isRegionMatch) return false;
-        }
-      }
-      return true;
+      const matchesRegion = regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true;
+      return matchesVisible && matchesRegion;
     });
 
-    if (matchingVars.length === 0)
-      return variations.find(v => checkStockGlobally(v)) || variations[0];
+    // فال‌بک قیمت کف: اگر واریاسیونی با مشخصات انتخابی مچ نشد، ارزان‌ترین واریاسیون موجود در همان ریجن فعال را برمی‌گردانیم
+    if (matchingVars.length === 0) {
+      const regionVars = variations.filter(v => 
+        regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true
+      );
+      return regionVars.find(v => checkStockGlobally(v)) || regionVars[0] || variations[0];
+    }
 
     let accPrice: number | null = null;
     let accGift: number | 'disabled' = 'disabled';
@@ -183,7 +197,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       parsedGiftPrice: accGift,
       parsedCodePrice: accCode,
     } as VariationCard;
-  }, [variations, selectedAttrs, groupedAttributes, activeRegion]);
+  }, [variations, selectedAttrs, groupedAttributes, regionInfo]);
 
   const allGalleryImages = useMemo(() => {
     const images = new Set<string>();
@@ -239,6 +253,9 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
   const handleAttrSelect = useCallback((name: string, val: string) => {
     setSelectedAttrs(prev => {
       const draftAttrs = { ...prev, [name]: val };
+      if (regionInfo) {
+        draftAttrs[regionInfo.name] = regionInfo.value;
+      }
       const changeLevelIndex = groupedAttributes.findIndex(g => g.name === name);
 
       for (let i = changeLevelIndex + 1; i < groupedAttributes.length; i++) {
@@ -247,23 +264,8 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
           const validatesUpToCurrentLayer = groupedAttributes.slice(0, i + 1).every(groupLayer =>
             v.attributes?.some(a => a.name === groupLayer.name && a.value === draftAttrs[groupLayer.name])
           );
-
-          if (activeRegion) {
-            const regionAttr = v.attributes?.find(a => {
-              const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
-              return cleanName.includes('region') || cleanName.includes('ریجن');
-            });
-            if (regionAttr) {
-              const valLower = regionAttr.value.toLowerCase();
-              const regionLower = activeRegion.toLowerCase();
-              const isRegionMatch = valLower === regionLower || 
-                                    (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
-                                    (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
-              if (!isRegionMatch) return false;
-            }
-          }
-
-          return validatesUpToCurrentLayer && checkStockGlobally(v);
+          const matchesRegion = regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true;
+          return validatesUpToCurrentLayer && matchesRegion && checkStockGlobally(v);
         });
         if (!isStillFunctioning) {
           const viableEscapeVal = nextTargetGroup.values.find(candVal =>
@@ -271,24 +273,9 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
               const pastLayers = groupedAttributes.slice(0, i).every(upLevelG =>
                 v.attributes?.some(a => a.name === upLevelG.name && a.value === draftAttrs[upLevelG.name])
               );
-
-              if (activeRegion) {
-                const regionAttr = v.attributes?.find(a => {
-                  const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
-                  return cleanName.includes('region') || cleanName.includes('ریجن');
-                });
-                if (regionAttr) {
-                  const valLower = regionAttr.value.toLowerCase();
-                  const regionLower = activeRegion.toLowerCase();
-                  const isRegionMatch = valLower === regionLower || 
-                                        (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
-                                        (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
-                  if (!isRegionMatch) return false;
-                }
-              }
-
               const isMatchingEscape = v.attributes?.some(a => a.name === nextTargetGroup.name && a.value === candVal.value);
-              return pastLayers && isMatchingEscape && checkStockGlobally(v);
+              const matchesRegion = regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true;
+              return pastLayers && isMatchingEscape && matchesRegion && checkStockGlobally(v);
             })
           );
           draftAttrs[nextTargetGroup.name] = viableEscapeVal ? viableEscapeVal.value : nextTargetGroup.values[0].value;
@@ -297,7 +284,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       if (changeLevelIndex === 0) setSelectedGalleryImage(null);
       return draftAttrs;
     });
-  }, [groupedAttributes, variations, activeRegion]);
+  }, [groupedAttributes, variations, regionInfo]);
 
   return (
     <div className="flex flex-col gap-12 w-full min-h-screen" dir="rtl">
