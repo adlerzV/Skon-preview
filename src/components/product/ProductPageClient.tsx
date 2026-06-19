@@ -51,7 +51,11 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
         const v = normalize(item.value);
         return v.includes('گیفت') || v.includes('مستقیم') || v.includes('کد') || v.includes('gift') || v.includes('direct');
       });
-      if (!isDeliveryAttr && !isDeliveryVal) {
+      const isRegionAttr =
+        normalizedName.includes('region') ||
+        normalizedName.includes('ریجن');
+
+      if (!isDeliveryAttr && !isDeliveryVal && !isRegionAttr) {
         filteredMap.set(name, values);
       }
     });
@@ -69,16 +73,34 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
 
       for (let i = 0; i < groupedAttributes.length; i++) {
         const group = groupedAttributes[i];
+
         if (i === 0 && targetEdition && group.values.some(v => v.value === targetEdition)) {
           resultAttrs[group.name] = targetEdition;
           continue;
         }
+
         const validOpt = group.values.find(candidate =>
           variations.some(v => {
             const matchesPreceding = groupedAttributes.slice(0, i).every(prevG =>
               v.attributes?.some(a => a.name === prevG.name && a.value === resultAttrs[prevG.name])
             );
             const matchesCandidate = v.attributes?.some(a => a.name === group.name && a.value === candidate.value);
+            
+            if (activeRegion) {
+              const regionAttr = v.attributes?.find(a => {
+                const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
+                return cleanName.includes('region') || cleanName.includes('ریجن');
+              });
+              if (regionAttr) {
+                const valLower = regionAttr.value.toLowerCase();
+                const regionLower = activeRegion.toLowerCase();
+                const isRegionMatch = valLower === regionLower || 
+                                      (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
+                                      (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
+                if (!isRegionMatch) return false;
+              }
+            }
+
             return matchesPreceding && matchesCandidate && checkStockGlobally(v);
           })
         );
@@ -86,7 +108,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       }
       return resultAttrs;
     },
-    [variations, groupedAttributes]
+    [variations, groupedAttributes, activeRegion]
   );
 
   const [selectedAttrs, setSelectedAttrs] = useState<Record<string, string>>(() =>
@@ -94,20 +116,36 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
   );
 
   useEffect(() => {
-    if (initialEdition) {
-      setSelectedAttrs(findFirstValidAttributes(initialEdition));
-    }
-  }, [initialEdition, findFirstValidAttributes]);
+    setSelectedAttrs(findFirstValidAttributes(initialEdition));
+  }, [initialEdition, activeRegion, findFirstValidAttributes]);
 
   const combinedAggregateVar = useMemo(() => {
     if (variations.length === 0) return null;
 
-    const matchingVars = variations.filter(v =>
-      groupedAttributes.every(group => {
+    const matchingVars = variations.filter(v => {
+      const matchesVisibleAttrs = groupedAttributes.every(group => {
         const currentAttrObj = v.attributes?.find(a => a.name === group.name);
         return currentAttrObj ? currentAttrObj.value === selectedAttrs[group.name] : true;
-      })
-    );
+      });
+
+      if (!matchesVisibleAttrs) return false;
+
+      if (activeRegion) {
+        const regionAttr = v.attributes?.find(a => {
+          const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
+          return cleanName.includes('region') || cleanName.includes('ریجن');
+        });
+        if (regionAttr) {
+          const valLower = regionAttr.value.toLowerCase();
+          const regionLower = activeRegion.toLowerCase();
+          const isRegionMatch = valLower === regionLower || 
+                                (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
+                                (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
+          if (!isRegionMatch) return false;
+        }
+      }
+      return true;
+    });
 
     if (matchingVars.length === 0)
       return variations.find(v => checkStockGlobally(v)) || variations[0];
@@ -145,7 +183,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       parsedGiftPrice: accGift,
       parsedCodePrice: accCode,
     } as VariationCard;
-  }, [variations, selectedAttrs, groupedAttributes]);
+  }, [variations, selectedAttrs, groupedAttributes, activeRegion]);
 
   const allGalleryImages = useMemo(() => {
     const images = new Set<string>();
@@ -209,6 +247,22 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
           const validatesUpToCurrentLayer = groupedAttributes.slice(0, i + 1).every(groupLayer =>
             v.attributes?.some(a => a.name === groupLayer.name && a.value === draftAttrs[groupLayer.name])
           );
+
+          if (activeRegion) {
+            const regionAttr = v.attributes?.find(a => {
+              const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
+              return cleanName.includes('region') || cleanName.includes('ریجن');
+            });
+            if (regionAttr) {
+              const valLower = regionAttr.value.toLowerCase();
+              const regionLower = activeRegion.toLowerCase();
+              const isRegionMatch = valLower === regionLower || 
+                                    (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
+                                    (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
+              if (!isRegionMatch) return false;
+            }
+          }
+
           return validatesUpToCurrentLayer && checkStockGlobally(v);
         });
         if (!isStillFunctioning) {
@@ -217,6 +271,22 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
               const pastLayers = groupedAttributes.slice(0, i).every(upLevelG =>
                 v.attributes?.some(a => a.name === upLevelG.name && a.value === draftAttrs[upLevelG.name])
               );
+
+              if (activeRegion) {
+                const regionAttr = v.attributes?.find(a => {
+                  const cleanName = a.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
+                  return cleanName.includes('region') || cleanName.includes('ریجن');
+                });
+                if (regionAttr) {
+                  const valLower = regionAttr.value.toLowerCase();
+                  const regionLower = activeRegion.toLowerCase();
+                  const isRegionMatch = valLower === regionLower || 
+                                        (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
+                                        (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
+                  if (!isRegionMatch) return false;
+                }
+              }
+
               const isMatchingEscape = v.attributes?.some(a => a.name === nextTargetGroup.name && a.value === candVal.value);
               return pastLayers && isMatchingEscape && checkStockGlobally(v);
             })
@@ -227,38 +297,11 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       if (changeLevelIndex === 0) setSelectedGalleryImage(null);
       return draftAttrs;
     });
-  }, [groupedAttributes, variations]);
-
-  useEffect(() => {
-    if (!activeRegion) return;
-
-    // پیدا کردن اتمسفر ویژگی مربوط به ریجن
-    const regionGroup = groupedAttributes.find(g => {
-      const cleanName = g.name.replace('pa_', '').replace('attribute_', '').toLowerCase();
-      return cleanName.includes('region') || cleanName.includes('ریجن');
-    });
-
-    if (regionGroup) {
-      // مطابقت دادن مقدار ریجن هدر (مثل eu یا us) با مقادیر ویژگی محصول (مثل اروپا یا آمریکا)
-      const matchedValue = regionGroup.values.find(v => {
-        const valLower = v.value.toLowerCase();
-        const regionLower = activeRegion.toLowerCase();
-        return valLower === regionLower || 
-               (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
-               (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
-      });
-
-      if (matchedValue && selectedAttrs[regionGroup.name] !== matchedValue.value) {
-        handleAttrSelect(regionGroup.name, matchedValue.value);
-      }
-    }
-  }, [activeRegion, groupedAttributes, handleAttrSelect, selectedAttrs]);
+  }, [groupedAttributes, variations, activeRegion]);
 
   return (
     <div className="flex flex-col gap-12 w-full min-h-screen" dir="rtl">
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start w-full">
-
         <div className="lg:col-span-4 flex flex-col gap-6 w-full">
           <div>
             <div className="flex items-center gap-2 mb-3">
