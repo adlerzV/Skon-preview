@@ -26,7 +26,10 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
   const containerRef = useRef<HTMLDivElement>(null);
   const [trackOffset, setTrackOffset] = useState(0);
 
-  // مرحله ۳: استخراج اتریبیوت‌های نمایشی و حذف کامل ریجن از لایه نمایش UI
+  // هماهنگی با پیش‌فرض سوییچر هدر در صورت نبودن ریجن در URL
+  const effectiveRegion = activeRegion || "eu";
+
+  // استخراج اتریبیوت‌های نمایشی و حذف کامل ریجن از لایه نمایش UI
   const groupedAttributes = useMemo(() => {
     const map = new Map<string, Set<{ value: string; flagUrl: string }>>();
     variations.forEach(v => {
@@ -70,7 +73,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     }));
   }, [variations]);
 
-  // منطق پیدا کردن نام اتریبیوت ریجن در کل واریاسیون‌ها و مچ کردن مقدار آن با activeRegion هدر
+  // پیدا کردن نام اتریبیوت ریجن و مچ کردن آن با ریجن فعال (با احتساب فالبک لود اول)
   const regionInfo = useMemo(() => {
     let repoName = "";
     const values = new Set<string>();
@@ -85,25 +88,24 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       });
     });
 
-    if (!repoName || !activeRegion) return null;
+    if (!repoName) return null;
 
     const matchedValue = Array.from(values).find(val => {
       const valLower = val.toLowerCase();
-      const regionLower = activeRegion.toLowerCase();
+      const regionLower = effectiveRegion.toLowerCase();
       return valLower === regionLower || 
              (regionLower === 'eu' && (valLower.includes('eu') || valLower.includes('اروپا'))) ||
              (regionLower === 'us' && (valLower.includes('us') || valLower.includes('آمریکا')));
     });
 
     return matchedValue ? { name: repoName, value: matchedValue } : null;
-  }, [variations, activeRegion]);
+  }, [variations, effectiveRegion]);
 
-  // پیدا کردن اولین اتریبیوت معتبر با در نظر گرفتن ریجن مخفی
+  // پیدا کردن اولین اتریبیوت معتبر با در نظر گرفتن ریجن فعال
   const findFirstValidAttributes = useCallback(
     (targetEdition?: string): Record<string, string> => {
       const resultAttrs: Record<string, string> = {};
       
-      // چپاندن مخفیانه ریجن فعال به اتریبیوت‌های انتخابی
       if (regionInfo) {
         resultAttrs[regionInfo.name] = regionInfo.value;
       }
@@ -138,12 +140,12 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     findFirstValidAttributes(initialEdition)
   );
 
-  // واکنش به تغییر ریجن هدر یا ادیشن اولیه و آپدیت استیت اتریبیوت‌ها
+  // واکنش آنی به تغییر ریجن هدر یا ادیشن اولیه
   useEffect(() => {
     setSelectedAttrs(findFirstValidAttributes(initialEdition));
   }, [initialEdition, regionInfo, findFirstValidAttributes]);
 
-  // مرحله ۴: اصلاح منطق ست شدن واریاسیون نهایی و محاسبه دقیق قیمت کف ریجن فعال
+  // محاسبه دقیق قیمت کف و قیمت‌های خط‌خورده ریجن فعال
   const combinedAggregateVar = useMemo(() => {
     if (variations.length === 0) return null;
 
@@ -156,7 +158,6 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
       return matchesVisible && matchesRegion;
     });
 
-    // فال‌بک قیمت کف: اگر واریاسیونی با مشخصات انتخابی مچ نشد، ارزان‌ترین واریاسیون موجود در همان ریجن فعال را برمی‌گردانیم
     if (matchingVars.length === 0) {
       const regionVars = variations.filter(v => 
         regionInfo ? v.attributes?.some(a => a.name === regionInfo.name && a.value === regionInfo.value) : true
@@ -165,37 +166,53 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     }
 
     let accPrice: number | null = null;
+    let accRegularPrice: number | null = null;
     let accGift: number | 'disabled' = 'disabled';
+    let accGiftRegular: number | 'disabled' = 'disabled';
     let accCode: number | 'disabled' = 'disabled';
+    let accCodeRegular: number | 'disabled' = 'disabled';
 
     matchingVars.forEach(mv => {
       if (mv.parsedPrice != null && (accPrice === null || mv.parsedPrice < accPrice)) {
         accPrice = mv.parsedPrice;
+        accRegularPrice = mv.parsedRegularPrice ?? mv.parsedPrice;
       }
       if (mv.parsedGiftPrice != null && mv.parsedGiftPrice !== 'disabled') {
-        accGift = accGift === 'disabled'
-          ? mv.parsedGiftPrice
-          : Math.min(accGift as number, mv.parsedGiftPrice as number);
+        if (accGift === 'disabled' || (mv.parsedGiftPrice as number) < (accGift as number)) {
+          accGift = mv.parsedGiftPrice;
+          accGiftRegular = mv.parsedGiftRegularPrice != null && mv.parsedGiftRegularPrice !== 'disabled'
+            ? mv.parsedGiftRegularPrice
+            : mv.parsedGiftPrice;
+        }
       }
       if (mv.parsedCodePrice != null && mv.parsedCodePrice !== 'disabled') {
-        accCode = accCode === 'disabled'
-          ? mv.parsedCodePrice
-          : Math.min(accCode as number, mv.parsedCodePrice as number);
+        if (accCode === 'disabled' || (mv.parsedCodePrice as number) < (accCode as number)) {
+          accCode = mv.parsedCodePrice;
+          accCodeRegular = mv.parsedCodeRegularPrice != null && mv.parsedCodeRegularPrice !== 'disabled'
+            ? mv.parsedCodeRegularPrice
+            : mv.parsedCodePrice;
+        }
       }
+
       const comboText = mv.attributes?.map(a => a.value.toLowerCase()).join(' ') || "";
       if ((comboText.includes('گیفت') || comboText.includes('gift')) && mv.parsedPrice != null && accGift === 'disabled') {
         accGift = mv.parsedPrice;
+        accGiftRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
       }
       if ((comboText.includes('کد') || comboText.includes('code')) && mv.parsedPrice != null && accCode === 'disabled') {
         accCode = mv.parsedPrice;
+        accCodeRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
       }
     });
 
     return {
       ...matchingVars[0],
       parsedPrice: accPrice,
+      parsedRegularPrice: accRegularPrice,
       parsedGiftPrice: accGift,
+      parsedGiftRegularPrice: accGiftRegular,
       parsedCodePrice: accCode,
+      parsedCodeRegularPrice: accCodeRegular,
     } as VariationCard;
   }, [variations, selectedAttrs, groupedAttributes, regionInfo]);
 
@@ -311,6 +328,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
             selectedAttrs={selectedAttrs}
             onAttributeSelect={handleAttrSelect}
             variations={variations}
+            regionInfo={regionInfo}
           />
 
           <DeliveryAndPrice selectedVariation={combinedAggregateVar ?? null} />

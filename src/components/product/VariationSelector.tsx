@@ -1,99 +1,113 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { VariationCard } from "@/lib/graphql";
 
-interface AttrValueItem {
+interface AttributeValue {
   value: string;
-  flagUrl: string;
+  flagUrl?: string;
 }
 
-interface VariationSelectorProps {
-  groupedAttributes: { name: string; values: AttrValueItem[] }[];
+interface GroupedAttribute {
+  name: string;
+  values: AttributeValue[];
+}
+
+interface Props {
+  groupedAttributes: GroupedAttribute[];
   selectedAttrs: Record<string, string>;
   onAttributeSelect: (name: string, value: string) => void;
   variations: VariationCard[];
+  regionInfo?: { name: string; value: string } | null;
 }
+
+const checkStockGlobally = (v: VariationCard) => {
+  return (
+    v.parsedPrice != null ||
+    (v.parsedGiftPrice != null && v.parsedGiftPrice !== "disabled") ||
+    (v.parsedCodePrice != null && v.parsedCodePrice !== "disabled")
+  );
+};
 
 export default function VariationSelector({
   groupedAttributes,
   selectedAttrs,
   onAttributeSelect,
-  variations
-}: VariationSelectorProps) {
-  if (!groupedAttributes || groupedAttributes.length === 0) return null;
+  variations,
+  regionInfo,
+}: Props) {
+  
+  // بررسی در دسترس بودن گزینه‌ها با توجه به ریجن هدر و انتخاب‌های قبلی (منطق آبشاری)
+  const isOptionAvailable = (groupName: string, optionValue: string, groupIndex: number) => {
+    return variations.some((v) => {
+      // ۱. چک کردن ریجن فعال مخفی
+      if (regionInfo) {
+        const hasRegion = v.attributes?.some(
+          (a) => a.name === regionInfo.name && a.value === regionInfo.value
+        );
+        if (!hasRegion) return false;
+      }
 
-  const isVariationInStockGlobally = (v: VariationCard) => {
-    return (
-      (v.parsedPrice != null) ||
-      (v.parsedGiftPrice != null && v.parsedGiftPrice !== "disabled") ||
-      (v.parsedCodePrice != null && v.parsedCodePrice !== "disabled")
-    );
+      // ۲. چک کردن اتریبیوت‌های لایه‌های قبلی
+      const matchesPreceding = groupedAttributes
+        .slice(0, groupIndex)
+        .every((prevGroup) => {
+          return v.attributes?.some(
+            (a) => a.name === prevGroup.name && a.value === selectedAttrs[prevGroup.name]
+          );
+        });
+
+      if (!matchesPreceding) return false;
+
+      // ۳. چک کردن خود این اتریبیوت
+      const matchesCurrent = v.attributes?.some(
+        (a) => a.name === groupName && a.value === optionValue
+      );
+
+      if (!matchesCurrent) return false;
+
+      // ۴. چک کردن موجودی و قیمت جهانی واریاسیون
+      return checkStockGlobally(v);
+    });
   };
 
   return (
     <div className="flex flex-col gap-5 w-full">
-      {groupedAttributes.map((group, currentLayerIdx) => {
-        const cleanName = group.name.replace('pa_', '').replace('attribute_', '');
-        const isRegion = cleanName.toLowerCase().includes('region') || cleanName.includes('ریجن');
+      {groupedAttributes.map((group, groupIdx) => {
+        const cleanGroupName = group.name.replace("pa_", "").replace("attribute_", "");
         
-        const processedValues = group.values.map(btnValue => {
-          const isValidBtn = variations.some(v => {
-            const confirmsThisBtnVal = v.attributes?.some(a => a.name === group.name && a.value === btnValue.value);
-            if (!confirmsThisBtnVal) return false;
-            for (let parentStepIdx = 0; parentStepIdx < currentLayerIdx; parentStepIdx++) {
-               const upperG = groupedAttributes[parentStepIdx];
-               const currentMandatoryChoiceFromUser = selectedAttrs[upperG.name];
-               const adheresToUpstreamRule = v.attributes?.some(a => a.name === upperG.name && a.value === currentMandatoryChoiceFromUser);
-               if (!adheresToUpstreamRule) return false;
-            }
-            return isVariationInStockGlobally(v);
-          });
-          return { item: btnValue, isValidBtn };
-        });
-
-        if (processedValues.length === 0) return null;
-
         return (
-          <div key={group.name} className="flex flex-col gap-2 w-full">
-            <span className="text-brand-surface_m text-[13px] font-bold">
-              انتخاب {cleanName}:
+          <div key={group.name} className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-brand-surface_m">
+              انتخاب {cleanGroupName}:
             </span>
+            <div className="flex flex-wrap gap-2">
+              {group.values.map((opt) => {
+                const isSelected = selectedAttrs[group.name] === opt.value;
+                const isAvailable = isOptionAvailable(group.name, opt.value, groupIdx);
 
-            <div 
-              className={
-                isRegion 
-                  ? "grid grid-cols-2 lg:flex lg:flex-row lg:flex-wrap gap-2 w-full"
-                  : "grid grid-cols-2 sm:grid-cols-3 gap-2 w-full"
-              }
-            >
-              {processedValues.map(({ item, isValidBtn }) => {
-                const isSelected = selectedAttrs[group.name] === item.value;
                 return (
                   <button
-                    key={item.value}
+                    key={opt.value}
                     type="button"
-                    disabled={!isValidBtn}
-                    onClick={() => {
-                      if (isValidBtn) {
-                        onAttributeSelect(group.name, item.value);
-                      }
-                    }}
-                    className={`p-3 text-xs font-medium transition-all duration-200 flex flex-col items-center justify-center gap-2 border rounded-sm lg:flex-1 min-w-[90px] ${
-                      !isValidBtn
-                        ? "opacity-25 cursor-not-allowed bg-brand-bg text-brand-surface_m/40 border-brand-surface_hover/30"
-                        : isSelected
-                        ? "bg-brand-blue/10 border-brand-blue text-brand-white font-bold shadow-[0_0_12px_rgba(0,116,224,0.15)]"
-                        : "bg-brand-surface text-brand-m_khonsa border-brand-surface_hover hover:border-brand-white hover:text-brand-active"
+                    onClick={() => isAvailable && onAttributeSelect(group.name, opt.value)}
+                    disabled={!isAvailable}
+                    className={`px-4 py-2.5 text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
+                      isSelected
+                        ? "bg-brand-blue border-brand-blue text-brand-white shadow-[0_0_10px_rgba(0,116,224,0.2)]"
+                        : isAvailable
+                        ? "bg-brand-menu border-brand-surface_hover text-brand-surface_m hover:border-brand-blue hover:text-brand-active"
+                        : "bg-brand-menu/40 border-brand-surface/20 text-brand-surface_m/30 cursor-not-allowed line-through"
                     }`}
                   >
-                    {item.flagUrl && (
-                      <div className="relative w-7 h-4.5 overflow-hidden rounded-sm flex-shrink-0">
-                        <Image src={item.flagUrl} alt={item.value} fill className="object-cover" />
-                      </div>
+                    {opt.flagUrl && (
+                      <img
+                        src={opt.flagUrl}
+                        alt=""
+                        className={`w-4 h-3.5 object-cover rounded-sm ${!isAvailable ? "opacity-20" : ""}`}
+                      />
                     )}
-                    <span className="text-center">{item.value}</span>
+                    {opt.value}
                   </button>
                 );
               })}

@@ -12,7 +12,6 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
   const { addToCart } = useCart();
 
   const [isMounted, setIsMounted] = useState(false);
-  
   const [deliveryType, setDeliveryType] = useState<"direct" | "gift" | "code" | null>(null);
   const [accountIdentifier, setAccountIdentifier] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
@@ -24,10 +23,6 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const isDirectDisabled = !isMounted || !selectedVariation || selectedVariation.parsedPrice === null || selectedVariation.parsedPrice === undefined;
-  const isGiftDisabled = !isMounted || !selectedVariation || selectedVariation.parsedGiftPrice === "disabled" || selectedVariation.parsedGiftPrice === null || selectedVariation.parsedGiftPrice === undefined;
-  const isCodeDisabled = !isMounted || !selectedVariation || selectedVariation.parsedCodePrice === "disabled" || selectedVariation.parsedCodePrice === null || selectedVariation.parsedCodePrice === undefined;
 
   useEffect(() => {
     if (!selectedVariation) {
@@ -50,6 +45,9 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
     }
   }, [selectedVariation]);
 
+  // جلوگیری از بروز هرگونه Hydration Mismatch با به تعویق انداختن رندر درخت المان‌ها تا ماونت شدن کلاینت
+  if (!isMounted) return null;
+
   if (!selectedVariation) {
     return (
       <div className="text-brand-surface_m text-sm text-center py-4 bg-brand-surface border border-brand-surface_hover">
@@ -57,6 +55,10 @@ export default function DeliveryAndPrice({ selectedVariation }: DeliveryAndPrice
       </div>
     );
   }
+
+  const isDirectDisabled = selectedVariation.parsedPrice === null || selectedVariation.parsedPrice === undefined;
+  const isGiftDisabled = selectedVariation.parsedGiftPrice === "disabled" || selectedVariation.parsedGiftPrice === null || selectedVariation.parsedGiftPrice === undefined;
+  const isCodeDisabled = selectedVariation.parsedCodePrice === "disabled" || selectedVariation.parsedCodePrice === null || selectedVariation.parsedCodePrice === undefined;
 
   const currentPrice =
     deliveryType === "gift" ? (typeof selectedVariation.parsedGiftPrice === "number" ? selectedVariation.parsedGiftPrice : null) :
