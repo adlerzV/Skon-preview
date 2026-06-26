@@ -39,74 +39,37 @@ export const formatProducts = (
       };
     });
 
-    if (archiveMode && parsedVariationCards.length > 0) {
-      const regionFilteredVariations = parsedVariationCards.filter(
+    let finalPrice: number | null = null;
+    let finalRegularPrice: number | null = null;
+
+    if (parsedVariationCards.length > 0) {
+      const regionVars = parsedVariationCards.filter(
         v => v.regionSlug?.toLowerCase() === activeRegion.toLowerCase()
       );
-
-      if (regionFilteredVariations.length === 0) return;
-
-      const groupedVariations = new Map<string, typeof regionFilteredVariations[0]>();
-
-      regionFilteredVariations.forEach(v => {
-        const editionAttr = v.attributes?.find((a: any) => {
-          const cleanName = a.name?.replace('pa_', '').replace('attribute_', '').toLowerCase() || '';
-          return !cleanName.includes('region') && !cleanName.includes('ریجن');
-        })?.value || 'نسخه اصلی';
-
-        if (!groupedVariations.has(editionAttr)) {
-          groupedVariations.set(editionAttr, v);
-        } else {
-          const existing = groupedVariations.get(editionAttr)!;
-          const currentPrice = v.parsedPrice || Infinity;
-          const existingPrice = existing.parsedPrice || Infinity;
-          if (currentPrice < existingPrice) {
-            groupedVariations.set(editionAttr, v);
-          }
-        }
-      });
-
-      groupedVariations.forEach((representativeVar, editionValue) => {
-        const validPrices = [
-          representativeVar.parsedPrice,
-          representativeVar.parsedGiftPrice,
-          representativeVar.parsedCodePrice
-        ].filter(p => p !== null && p !== undefined && p !== 'disabled') as number[];
-
-        const currentMinPrice = validPrices.length > 0 ? Math.min(...validPrices) : null;
-
-        formattedProducts.push({
-          ...product,
-          id: `${product.id}-${representativeVar.databaseId}`,
-          name: `${product.name} - ${editionValue}`,
-          image: representativeVar.imageUrl
-            ? { sourceUrl: representativeVar.imageUrl }
-            : product.image,
-          price: representativeVar.price,
-          regularPrice: representativeVar.regularPrice,
-          salePrice: representativeVar.salePrice,
-          parsedPrice: currentMinPrice, 
-          parsedRegularPrice: representativeVar.parsedRegularPrice,
-          variationCards: regionFilteredVariations, 
-          isVariation: true,
-          defaultVariationId: representativeVar.databaseId,
-          slug: product.slug,
-          defaultEdition: editionValue,
-          activeRegion: activeRegion 
-        });
-      });
+      
+      const targetVars = regionVars.length > 0 ? regionVars : parsedVariationCards;
+      const validPrices = targetVars.filter(v => typeof v.parsedPrice === 'number' && v.parsedPrice > 0);
+      
+      if (validPrices.length > 0) {
+        const lowestVar = validPrices.reduce((min, p) => p.parsedPrice! < min.parsedPrice! ? p : min, validPrices[0]);
+        finalPrice = lowestVar.parsedPrice;
+        finalRegularPrice = lowestVar.parsedRegularPrice;
+      } else {
+        finalPrice = targetVars[0].parsedPrice;
+        finalRegularPrice = targetVars[0].parsedRegularPrice;
+      }
     } else {
-      const firstVarPrice = parsedVariationCards.length > 0 ? parsedVariationCards[0].parsedPrice : null;
-      const firstVarRegularPrice = parsedVariationCards.length > 0 ? parsedVariationCards[0].parsedRegularPrice : null;
-
-          formattedProducts.push({
-            ...product,
-            parsedPrice: product.variationCards && product.variationCards.length > 0 ? firstVarPrice : parsePrice(product.price),
-            parsedRegularPrice: product.variationCards && product.variationCards.length > 0 ? firstVarRegularPrice : parsePrice(product.regularPrice),
-            variationCards: parsedVariationCards,
-            isVariation: parsedVariationCards.length > 0,
-          });
+      finalPrice = parsePrice(product.price);
+      finalRegularPrice = parsePrice(product.regularPrice);
     }
+
+    formattedProducts.push({
+      ...product,
+      parsedPrice: finalPrice,
+      parsedRegularPrice: finalRegularPrice,
+      variationCards: parsedVariationCards,
+      isVariation: parsedVariationCards.length > 0,
+    });
   });
 
   return formattedProducts;
