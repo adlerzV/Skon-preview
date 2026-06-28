@@ -1,13 +1,20 @@
 import { useState, useEffect, useTransition } from "react";
 import { searchProductsByKeyword } from "@/actions/search";
+import type { ProductNode } from "@/lib/graphql";
 
-export function useProductSearch() {
+interface UseProductSearchResult {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchResults: ProductNode[];
+  isPending: boolean;
+}
+
+export function useProductSearch(): UseProductSearchResult {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductNode[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    // ✅ یه effect واحد با debounce داخلی — بدون state میانی اضافه
     if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
@@ -16,11 +23,17 @@ export function useProductSearch() {
     let cancelled = false;
 
     const timer = setTimeout(() => {
-      startTransition(async () => {
-        const results = await searchProductsByKeyword(searchQuery);
-        if (!cancelled) {
-          setSearchResults(results);
-        }
+      let resolve: () => void;
+      const p = new Promise<void>((r) => { resolve = r; });
+      
+      startTransition(() => {
+        searchProductsByKeyword(searchQuery).then((results) => {
+          if (!cancelled) {
+            setSearchResults(results);
+          }
+          resolve();
+        });
+        return p;
       });
     }, 400);
 

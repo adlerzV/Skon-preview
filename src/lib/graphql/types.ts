@@ -13,10 +13,10 @@ export interface VariationCard {
   codeRegularPriceToman?: string;
   parsedPrice?: number | null;
   parsedRegularPrice?: number | null;
-  parsedGiftPrice?: number | 'disabled';
-  parsedGiftRegularPrice?: number | 'disabled';
-  parsedCodePrice?: number | 'disabled';
-  parsedCodeRegularPrice?: number | 'disabled';
+  parsedGiftPrice?: number | "disabled";
+  parsedGiftRegularPrice?: number | "disabled";
+  parsedCodePrice?: number | "disabled";
+  parsedCodeRegularPrice?: number | "disabled";
   regionSlug?: string;
 }
 
@@ -49,17 +49,17 @@ export interface ProductNode {
       image?: { sourceUrl: string } | null;
     }>;
   };
-  attributes?: any;
-  galleryImages?: any;
+  attributes?: {
+    nodes: Array<{ name: string; options: string[] }>;
+  };
+  galleryImages?: {
+    nodes: Array<{ sourceUrl: string }>;
+  };
 }
 
 export interface HeaderCategoryNode {
   name: string;
   slug: string;
-  image?: {
-    sourceUrl: string;
-  } | null;
-  categoryImage?: {
-    sourceUrl: string;
-  } | null;
+  image?: { sourceUrl: string } | null;
+  categoryImage?: { sourceUrl: string } | null;
 }

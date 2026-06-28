@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 export interface CartItem {
   id: string;
@@ -11,8 +11,30 @@ export interface CartItem {
   customFields?: {
     battleTag?: string;
     email?: string;
-    password?: string;
   };
+}
+
+function isValidCartItem(item: unknown): item is CartItem {
+  if (!item || typeof item !== "object") return false;
+  const i = item as Record<string, unknown>;
+  return (
+    typeof i.id === "string" &&
+    typeof i.databaseId === "number" &&
+    typeof i.name === "string" &&
+    typeof i.price === "number" &&
+    ["gift", "code", "direct"].includes(i.deliveryMethod as string)
+  );
+}
+
+function parseStoredCart(raw: string | null): CartItem[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidCartItem);
+  } catch {
+    return [];
+  }
 }
 
 interface CartContextType {
@@ -30,35 +52,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
-        if (Array.isArray(parsed)) {
-          setCart(parsed);
-        }
-      }
+      setCart(parseStoredCart(localStorage.getItem("cart")));
     } catch {
-      localStorage.removeItem("cart");
     }
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
     if (!isMounted) return;
-    try {
-      localStorage.setItem("cart", JSON.stringify(cart));
-    } catch {
-      // localStorage ممکنه در حالت private mode پر باشه
-    }
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem("cart", JSON.stringify(cart));
+      } catch {
+      }
+    }, 300);
+    return () => clearTimeout(timer);
   }, [cart, isMounted]);
 
-  const addToCart = (item: CartItem) => {
-    setCart(prev => [...prev, item]);
-  };
+  const addToCart = useCallback((item: CartItem) => {
+    setCart((prev) => {
+      if (prev.some((existing) => existing.id === item.id)) return prev;
+      return [...prev, item];
+    });
+  }, []);
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
-  };
+  const removeFromCart = useCallback((id: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== id));
+  }, []);
 
   const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
 
