@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductNode, VariationCard } from "@/lib/graphql";
@@ -154,9 +154,11 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     findFirstValidAttributes(initialEdition)
   );
 
-  useEffect(() => {
+  const [prevProps, setPrevProps] = useState({ initialEdition, regionValue: regionInfo?.value });
+  if (initialEdition !== prevProps.initialEdition || regionInfo?.value !== prevProps.regionValue) {
+    setPrevProps({ initialEdition, regionValue: regionInfo?.value });
     setSelectedAttrs(findFirstValidAttributes(initialEdition));
-  }, [initialEdition, regionInfo, findFirstValidAttributes]);
+  }
 
   const combinedAggregateVar = useMemo(() => {
     if (variations.length === 0) return null;
@@ -206,14 +208,24 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
         }
       }
 
-      const comboText = mv.attributes?.map(a => a.value.toLowerCase()).join(' ') || "";
-      if ((comboText.includes('گیفت') || comboText.includes('gift')) && mv.parsedPrice != null && accGift === 'disabled') {
-        accGift = mv.parsedPrice;
-        accGiftRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
-      }
-      if ((comboText.includes('کد') || comboText.includes('code')) && mv.parsedPrice != null && accCode === 'disabled') {
-        accCode = mv.parsedPrice;
-        accCodeRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
+      if (mv.attributes && (accGift === 'disabled' || accCode === 'disabled')) {
+        let hasGift = false;
+        let hasCode = false;
+        
+        for (let i = 0; i < mv.attributes.length; i++) {
+          const val = mv.attributes[i].value.toLowerCase();
+          if (val.includes('گیفت') || val.includes('gift')) hasGift = true;
+          if (val.includes('کد') || val.includes('code')) hasCode = true;
+        }
+
+        if (hasGift && mv.parsedPrice != null && accGift === 'disabled') {
+          accGift = mv.parsedPrice;
+          accGiftRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
+        }
+        if (hasCode && mv.parsedPrice != null && accCode === 'disabled') {
+          accCode = mv.parsedPrice;
+          accCodeRegular = mv.parsedRegularPrice ?? mv.parsedPrice;
+        }
       }
     });
 
@@ -267,7 +279,7 @@ export default function ProductPageClient({ product, initialEdition, activeRegio
     if (currentIndex < allGalleryImages.length - 1) setSelectedGalleryImage(allGalleryImages[currentIndex + 1]);
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!containerRef.current) return;
     const containerWidth = containerRef.current.offsetWidth;
     const thumbnailWidth = 100;

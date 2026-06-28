@@ -1,3 +1,4 @@
+import DOMPurify from "isomorphic-dompurify";
 import { fetchGraphQL } from './client';
 import { formatProducts } from './utils';
 import { HeaderCategoryNode, ProductNode } from './types';
@@ -239,7 +240,18 @@ export async function getProductDetail(slug: string) {
   if (!data?.product) return null;
 
   const formatted = formatProducts([data.product], false);
-  return formatted[0];
+  const product = formatted[0];
+
+  if (product) {
+    if (product.description) {
+      product.description = DOMPurify.sanitize(product.description);
+    }
+    if (product.shortDescription) {
+      product.shortDescription = DOMPurify.sanitize(product.shortDescription);
+    }
+  }
+
+  return product;
 }
 
 export async function getRegions() {
@@ -268,6 +280,7 @@ export async function getRegions() {
     flagUrl: r.flagUrl || undefined,
   }));
 }
+
 export async function getBlogCategoryArchive(slug: string) {
   if (!slug) return null;
 
@@ -301,6 +314,7 @@ export async function getBlogCategoryArchive(slug: string) {
   if (!data?.category) return null;
   return data.category;
 }
+
 export async function getAllBlogPosts() {
   const data = await fetchGraphQL(`
     query GetAllBlogPosts {
