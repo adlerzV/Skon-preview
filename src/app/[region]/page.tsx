@@ -3,6 +3,7 @@ import CategoryHero from "@/components/Hero";
 import nextDynamic from "next/dynamic";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Skeleton from "@/components/ui/Skeleton";
 
 interface HomeProps {
   params: Promise<{
@@ -14,7 +15,14 @@ export const dynamic = "force-dynamic";
 
 const DynamicProductGrid = nextDynamic(() => import("@/components/ProductGrid"), {
   loading: () => (
-    <div className="w-full my-4 h-[400px] bg-[#1c1e25]/40 backdrop-blur-xl border border-white/5 animate-pulse"></div>
+    <div className="space-y-6 my-12">
+      <Skeleton className="h-8 w-48 rounded-lg" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[380px] w-full rounded-2xl" />
+        ))}
+      </div>
+    </div>
   ), 
 });
 

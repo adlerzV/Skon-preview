@@ -268,3 +268,68 @@ export async function getRegions() {
     flagUrl: r.flagUrl || undefined,
   }));
 }
+export async function getBlogCategoryArchive(slug: string) {
+  if (!slug) return null;
+
+  const data = await fetchGraphQL(`
+    query GetBlogCategoryPosts($id: ID!) {
+      category(id: $id, idType: SLUG) {
+        name
+        slug
+        posts(first: 20) {
+          nodes {
+            id
+            title
+            slug
+            date
+            featuredImage {
+              node {
+                sourceUrl(size: MEDIUM)
+              }
+            }
+            author {
+              node {
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  `, { id: slug }, [`blog-category-${slug}`]);
+
+  if (!data?.category) return null;
+  return data.category;
+}
+export async function getAllBlogPosts() {
+  const data = await fetchGraphQL(`
+    query GetAllBlogPosts {
+      posts(first: 20) {
+        nodes {
+          id
+          title
+          slug
+          date
+          featuredImage {
+            node {
+              sourceUrl(size: MEDIUM)
+            }
+          }
+          author {
+            node {
+              name
+            }
+          }
+          categories(first: 1) {
+            nodes {
+              slug
+            }
+          }
+        }
+      }
+    }
+  `, {}, ["all-blog-posts"]);
+
+  if (!data?.posts?.nodes) return [];
+  return data.posts.nodes;
+}
