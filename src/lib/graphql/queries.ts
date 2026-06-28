@@ -123,7 +123,7 @@ export async function getHomePageData(activeRegion: string = 'eu') {
   `, 
   {}, 
   ['products', 'banners', 'home'],
-  { type: 'no-store' }
+  { type: "revalidate", seconds: 3600 }
   ); 
 
   if (!data) {

@@ -31,8 +31,7 @@ export default async function Header() {
     <header className="w-full sticky top-0 lg:top-[-60px] z-[10000] bg-[#15171e]" dir="rtl">
       <div className="hidden lg:flex w-full justify-between items-center h-[60px] px-6 max-w-[1600px] mx-auto">
         <div className="flex items-center h-full gap-8">
-          <Link href="/" className="flex items-center shrink-0" aria-label="صفحه اصلی">
-            <Image
+            <Link href={`/${activeRegion}`} className="flex items-center shrink-0" aria-label="صفحه اصلی">            <Image
               src="/images/arena2battleLogo.webp"
               alt="Arena2Battle"
               width={100}

@@ -28,8 +28,9 @@ export default function HeaderMenuSwitcher({ shopItems, blogItems }: HeaderMenuS
       </div>
     );
   }
-
-  const isBlogSection = pathname?.startsWith("/blog");
+  const segments = pathname ? pathname.split("/").filter(Boolean) : [];
+  const isBlogSection = segments[0] === "blog" || segments[1] === "blog";
+  
   const activeData = isBlogSection ? blogItems : shopItems;
 
   return (
