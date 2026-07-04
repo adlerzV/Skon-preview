@@ -33,10 +33,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "سبد خرید شما خالی است" }, { status: 400 });
     }
 
-    // نکته: هر آیتم متادیتای سفارشی (روش تحویل، ریجن، بتل‌تگ، ایمیل) دارد که فیلد
-    // استاندارد ووکامرس نیست. اینجا به‌صورت metaData روی هر لاین‌آیتم فرستاده می‌شود؛
-    // ساختار دقیق LineItemInput.metaData را در GraphiQL IDE وردپرس‌تان verify کنید
-    // (ممکن است بین نسخه‌های WooGraphQL کمی فرق داشته باشد).
     const lineItems = items.map((item) => ({
       productId: item.productId,
       variationId: item.variationId || undefined,
@@ -67,10 +63,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // هدایت کاربر به صفحه‌ی پرداخت بومی ووکامرس (order-pay) — همان درگاه‌های فعال
-    // (مثل زرین‌پال) را نشان می‌دهد؛ نیازی به پیاده‌سازی مجدد درگاه در Next.js نیست.
     const siteUrl = (process.env.NEXT_PUBLIC_WORDPRESS_API_URL || "").replace("/graphql", "");
-    const redirectUrl = `${siteUrl}/checkout/order-pay/${order.databaseId}/?pay_for_order=true&key=${order.orderKey}`;
+    const fallbackUrl = `${siteUrl}/checkout/order-pay/${order.databaseId}/?pay_for_order=true&key=${order.orderKey}`;
+    const redirectUrl = order.paymentUrl || fallbackUrl;
 
     return NextResponse.json({ success: true, redirectUrl, orderNumber: order.orderNumber });
   } catch (error) {

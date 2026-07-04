@@ -8,8 +8,17 @@ import {
   AUTH_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth/constants";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`login:${ip}`, { max: 10, windowMs: 5 * 60 * 1000 })) {
+    return NextResponse.json(
+      { error: "تعداد تلاش‌های ورود بیش از حد مجاز است. چند دقیقه دیگر تلاش کنید." },
+      { status: 429, headers: { "Retry-After": "300" } }
+    );
+  }
+
   try {
     const body = await request.json();
     const username = typeof body?.username === "string" ? body.username.trim() : "";
@@ -27,36 +36,23 @@ export async function POST(request: NextRequest) {
     }
 
     const isProd = process.env.NODE_ENV === "production";
-
     const response = NextResponse.json({
       success: true,
       user: { name: result.user.name, email: result.user.email },
     });
 
     response.cookies.set(AUTH_TOKEN_COOKIE, result.authToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: "lax",
-      path: "/",
-      maxAge: AUTH_TOKEN_MAX_AGE,
+      httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: AUTH_TOKEN_MAX_AGE,
     });
 
     if (result.refreshToken) {
       response.cookies.set(REFRESH_TOKEN_COOKIE, result.refreshToken, {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: "lax",
-        path: "/",
-        maxAge: REFRESH_TOKEN_MAX_AGE,
+        httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: REFRESH_TOKEN_MAX_AGE,
       });
     }
 
     response.cookies.set(LOGGED_IN_COOKIE, "1", {
-      httpOnly: false,
-      secure: isProd,
-      sameSite: "lax",
-      path: "/",
-      maxAge: REFRESH_TOKEN_MAX_AGE,
+      httpOnly: false, secure: isProd, sameSite: "lax", path: "/", maxAge: REFRESH_TOKEN_MAX_AGE,
     });
 
     return response;
