@@ -6,7 +6,7 @@ import Button from "@/components/ui/Button";
 import { ChevronRight, ChevronLeft, Play, Pause } from "lucide-react";
 
 interface Banner {
-  "secondimage": string;
+  secondimage: string;
   subtitle: string;
   link: string;
   imageUrl: string;
@@ -30,11 +30,11 @@ export default function CategoryHero({ banners }: Props) {
 
   useEffect(() => {
     if (banners.length <= 1 || !isPlaying) return;
-    
+
     const interval = setInterval(() => {
       handleNext();
     }, 5000);
-    
+
     return () => clearInterval(interval);
   }, [isPlaying, banners.length, handleNext]);
 
@@ -53,13 +53,13 @@ export default function CategoryHero({ banners }: Props) {
                 index === activeIndex ? "opacity-100 z-10" : "opacity-0 z-0"
               }`}
             >
-              <Image 
-                src={banner.imageUrl || "/images/bi-aksi.webp"} 
-                alt={banner.subtitle} 
-                fill 
-                priority={index === 0} 
+              <Image
+                src={banner.imageUrl || "/images/bi-aksi.webp"}
+                alt={banner.subtitle}
+                fill
+                priority={index === 0}
                 sizes="(max-width: 1600px) 100vw, 1600px"
-                className="object-cover object-center" 
+                className="object-cover object-center"
               />
             </div>
           ))}
@@ -68,31 +68,23 @@ export default function CategoryHero({ banners }: Props) {
         </div>
 
         <div key={activeIndex} className="relative h-full flex flex-col justify-center px-[5.5rem] md:px-[5.5rem] w-full max-w-2xl z-30 animate-in fade-in duration-700">
-          {currentBanner["secondimage"] && (
+          {currentBanner.secondimage && (
             <div className="relative w-48 h-16 md:w-64 md:h-24 mb-2">
-              <Image
-                src={currentBanner["secondimage"]}
-                alt="Banner Logo"
-                fill
-                className="object-contain object-right"
-                priority
-              />
+              <Image src={currentBanner.secondimage} alt="Banner Logo" fill className="object-contain object-right" priority />
             </div>
           )}
-          <p className="text-sm text-brand-white mb-4 max-w-lg leading-relaxed line-clamp-2">
-            {currentBanner.subtitle}
-          </p>
+          <p className="text-sm text-brand-white mb-4 max-w-lg leading-relaxed line-clamp-2">{currentBanner.subtitle}</p>
           <div className="flex">
             <Button href={currentBanner.link || "#"} variant="primary">
-               مشاهدہ و خرید
+              مشاهده و خرید
             </Button>
           </div>
         </div>
 
         {banners.length > 1 && (
           <>
-            <Button 
-              variant="icon" 
+            <Button
+              variant="icon"
               className="absolute right-4 top-1/2 -translate-y-1/2 h-[80px] z-40"
               onClick={() => { handlePrev(); setIsPlaying(false); }}
               aria-label="قبلی"
@@ -100,8 +92,8 @@ export default function CategoryHero({ banners }: Props) {
               <ChevronRight size={24} strokeWidth={3} />
             </Button>
 
-            <Button 
-              variant="icon" 
+            <Button
+              variant="icon"
               className="absolute left-4 top-1/2 -translate-y-1/2 h-[80px] z-40"
               onClick={() => { handleNext(); setIsPlaying(false); }}
               aria-label="بعدی"
@@ -114,21 +106,29 @@ export default function CategoryHero({ banners }: Props) {
 
       {banners.length > 1 && (
         <div className="flex items-center justify-center gap-4 mt-3">
-          
           <Button variant="ghost" onClick={() => setIsPlaying(!isPlaying)} aria-label={isPlaying ? "توقف اسلایدر" : "پخش اسلایدر"}>
-            {isPlaying ? (
-              <Pause size={18} fill="currentColor" stroke="none" />
-            ) : (
-              <Play size={18} fill="currentColor" stroke="none" />
-            )}
+            {isPlaying ? <Pause size={18} fill="currentColor" stroke="none" /> : <Play size={18} fill="currentColor" stroke="none" />}
           </Button>
 
-          <div className="flex gap-2 items-center min-w-[115px]">
+          <div className="flex gap-2 items-center min-w-[115px]" role="tablist" aria-label="اسلایدهای بنر">
             {banners.map((_, index) => (
-              <div 
+              <div
                 key={index}
+                role="tab"
+                tabIndex={0}
+                aria-selected={index === activeIndex}
+                aria-label={`اسلاید ${index + 1}`}
                 onClick={() => { setActiveIndex(index); setIsPlaying(false); }}
-                className={`h-[5px] flex-1 rounded-full cursor-pointer transition-all duration-300 ${index === activeIndex ? "bg-brand-blue " : "bg-brand-surface_m"}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActiveIndex(index);
+                    setIsPlaying(false);
+                  }
+                }}
+                className={`h-[5px] flex-1 rounded-full cursor-pointer transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue ${
+                  index === activeIndex ? "bg-brand-blue " : "bg-brand-surface_m"
+                }`}
               ></div>
             ))}
           </div>

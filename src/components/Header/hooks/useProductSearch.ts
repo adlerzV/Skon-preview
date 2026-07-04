@@ -23,17 +23,11 @@ export function useProductSearch(): UseProductSearchResult {
     let cancelled = false;
 
     const timer = setTimeout(() => {
-      let resolve: () => void;
-      const p = new Promise<void>((r) => { resolve = r; });
-      
-      startTransition(() => {
-        searchProductsByKeyword(searchQuery).then((results) => {
-          if (!cancelled) {
-            setSearchResults(results);
-          }
-          resolve();
-        });
-        return p;
+      startTransition(async () => {
+        const results = await searchProductsByKeyword(searchQuery);
+        if (!cancelled) {
+          setSearchResults(results);
+        }
       });
     }, 400);
 
