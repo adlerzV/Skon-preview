@@ -88,6 +88,7 @@ export const CREATE_ORDER_MUTATION = `
         orderNumber
         total
         status
+        paymentUrl
       }
     }
   }

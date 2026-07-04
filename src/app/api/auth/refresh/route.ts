@@ -1,3 +1,4 @@
+// src/app/api/auth/refresh/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { fetchGraphQL } from "@/lib/graphql";
@@ -22,11 +23,8 @@ export async function POST() {
 
     const response = NextResponse.json({ success: true });
     response.cookies.set(AUTH_TOKEN_COOKIE, newToken, {
-      httpOnly: true,
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: AUTH_TOKEN_MAX_AGE,
+      httpOnly: true, path: "/", secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", maxAge: AUTH_TOKEN_MAX_AGE,
     });
     return response;
   } catch (error) {
