@@ -48,14 +48,24 @@ export const CUSTOMER_ORDERS_QUERY = `
             nodes {
               id databaseId quantity total
               fulfillmentStatus
-              product { node { name databaseId } }
+              product { name databaseId }
               metaData { key value }
             }
           }
         }
       }
       downloadableItems {
-        nodes { downloadId url product { node { databaseId } } }
+        nodes { downloadId url product { databaseId } }
+      }
+    }
+  }
+`;
+
+export const CUSTOMER_ORDERS_LIGHT_QUERY = `
+  query GetCustomerOrdersLight {
+    customer {
+      orders(first: 30) {
+        nodes { databaseId orderNumber date }
       }
     }
   }
@@ -93,15 +103,6 @@ export const UPDATE_AVATAR_MUTATION = `
     updateUserAvatar(input: { avatarUrl: $avatarUrl }) {
       success
       avatarUrl
-    }
-  }
-`;
-export const CUSTOMER_ORDERS_LIGHT_QUERY = `
-  query GetCustomerOrdersLight {
-    customer {
-      orders(first: 30) {
-        nodes { databaseId orderNumber date }
-      }
     }
   }
 `;

@@ -66,6 +66,34 @@ export async function getProducts(categorySlug?: string, activeRegion: string = 
   return formatProducts(data?.products?.nodes ?? [], true, activeRegion);
 }
 
+export async function getProductsByIds(ids: number[], activeRegion: string = "eu") {
+  if (!ids || ids.length === 0) return [];
+
+  const results = await Promise.all(
+    ids.map((id) =>
+      fetchGraphQL(
+        `
+          ${PRODUCT_CARD_FIELDS}
+          query GetProductById($id: ID!) {
+            product(id: $id, idType: DATABASE_ID) {
+              ...ProductCardFields
+            }
+          }
+        `,
+        { id: String(id) },
+        [],
+        "no-store"
+      )
+    )
+  );
+
+  const products = results
+    .map((data) => data?.product)
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  return formatProducts(products as ProductNode[], true, activeRegion);
+}
+
 export async function getCategoryArchive(slug: string, activeRegion: string = "eu") {
   if (!slug) return null;
 
