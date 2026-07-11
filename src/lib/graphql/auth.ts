@@ -1,3 +1,4 @@
+// FILE: src/lib/graphql/auth.ts
 import "server-only";
 
 export const LOGIN_MUTATION = `
@@ -61,11 +62,30 @@ export const CUSTOMER_ORDERS_QUERY = `
   }
 `;
 
-export const CUSTOMER_ORDERS_LIGHT_QUERY = `
-  query GetCustomerOrdersLight {
+export const DASHBOARD_SUMMARY_QUERY = `
+  query GetDashboardSummary {
     customer {
-      orders(first: 30) {
-        nodes { databaseId orderNumber date }
+      orders(first: 10) {
+        nodes {
+          id
+          databaseId
+          orderNumber
+          status
+          date
+          total
+        }
+      }
+    }
+    viewer {
+      wishlistIds
+    }
+    supportTickets(first: 10) {
+      nodes {
+        id
+        databaseId
+        title
+        date
+        ticketStatus
       }
     }
   }
@@ -103,6 +123,26 @@ export const UPDATE_AVATAR_MUTATION = `
     updateUserAvatar(input: { avatarUrl: $avatarUrl }) {
       success
       avatarUrl
+    }
+  }
+`;
+
+export const UPDATE_PROFILE_MUTATION = `
+  mutation UpdateCustomerProfile($firstName: String, $lastName: String, $email: String) {
+    updateCustomerProfile(input: { firstName: $firstName, lastName: $lastName, email: $email }) {
+      success
+      name
+      email
+    }
+  }
+`;
+
+export const CUSTOMER_ORDERS_LIGHT_QUERY = `
+  query GetCustomerOrdersLight {
+    customer {
+      orders(first: 30) {
+        nodes { databaseId orderNumber date }
+      }
     }
   }
 `;
