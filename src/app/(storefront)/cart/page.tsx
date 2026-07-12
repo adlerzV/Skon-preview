@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import { Trash2, Globe, Sliders, Loader2 } from "lucide-react";
+import { Trash2, Globe, Sliders, Loader2, Minus, Plus } from "lucide-react";
 import { getClientCookie } from "@/lib/cookies";
 import { LOGGED_IN_COOKIE } from "@/lib/auth/constants";
 
 export default function CartPage() {
-  const { cart, removeFromCart } = useCart();
+  const { cart, removeFromCart, updateQuantity, totalQuantity } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -18,12 +18,12 @@ export default function CartPage() {
     setIsLoggedIn(getClientCookie(LOGGED_IN_COOKIE) === "1");
   }, []);
 
-  const totalOriginalPrice = cart?.reduce((sum: number, item: any) => {
+  const totalOriginalPrice = cart?.reduce((sum: number, item) => {
     const regular = Number(item.regularPrice) || Number(item.price) || 0;
-    return sum + regular;
+    return sum + regular * item.quantity;
   }, 0) || 0;
 
-  const totalPrice = cart?.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0) || 0;
+  const totalPrice = cart?.reduce((sum: number, item) => sum + Number(item.price) * item.quantity, 0) || 0;
   const totalDiscount = totalOriginalPrice - totalPrice;
 
   const getDeliveryLabel = (method: string) => {
@@ -56,7 +56,7 @@ export default function CartPage() {
           items: cart.map((item) => ({
             productId: item.productId,
             variationId: item.variationId,
-            quantity: 1,
+            quantity: item.quantity,
             deliveryMethod: item.deliveryMethod,
             region: item.region,
             variationName: item.variationName,
@@ -100,12 +100,12 @@ export default function CartPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8 bg-brand-bg text-brand-active">
       <h1 className="text-xl md:text-2xl font-black mb-6 flex items-center gap-2">
-        <span>🛒</span> سبد خرید شما ({cart.length.toLocaleString("fa-IR")} مورد)
+        <span>🛒</span> سبد خرید شما ({totalQuantity.toLocaleString("fa-IR")} مورد)
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 flex flex-col gap-4">
-          {cart.map((item: any) => {
+          {cart.map((item) => {
             const delivery = getDeliveryLabel(item.deliveryMethod);
             return (
               <div
@@ -113,7 +113,14 @@ export default function CartPage() {
                 className="bg-brand-surface border border-brand-surface_hover p-4 md:p-5 flex flex-col md:flex-row justify-between gap-4 relative animate-in fade-in duration-200"
               >
                 <div className="flex flex-col gap-2.5">
-                  <h3 className="font-bold text-base md:text-lg text-brand-active">{item.name}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-base md:text-lg text-brand-active">{item.name}</h3>
+                    {item.quantity > 1 && (
+                      <span className="text-xs font-black text-brand-blue bg-brand-blue/10 border border-brand-blue/20 px-2 py-0.5">
+                        {item.quantity.toLocaleString("fa-IR")}x
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className={`px-2.5 py-1 border font-bold ${delivery.color}`}>
@@ -143,6 +150,26 @@ export default function CartPage() {
                       </span>
                     )}
                   </div>
+
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="w-7 h-7 flex items-center justify-center bg-brand-bg border border-brand-surface_hover text-brand-m_khonsa hover:text-white hover:border-brand-surface_m transition-colors"
+                      aria-label="کاهش تعداد"
+                    >
+                      <Minus size={13} />
+                    </button>
+                    <span className="w-6 text-center text-sm font-bold">{item.quantity.toLocaleString("fa-IR")}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="w-7 h-7 flex items-center justify-center bg-brand-bg border border-brand-surface_hover text-brand-m_khonsa hover:text-white hover:border-brand-surface_m transition-colors"
+                      aria-label="افزایش تعداد"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex md:flex-col justify-between items-end gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-brand-surface_hover">
@@ -157,7 +184,7 @@ export default function CartPage() {
 
                   <div className="flex items-baseline gap-1 order-1 md:order-2">
                     <span className="text-xl font-black text-brand-sabz">
-                      {item.price.toLocaleString("fa-IR")}
+                      {(item.price * item.quantity).toLocaleString("fa-IR")}
                     </span>
                     <span className="text-[11px] text-brand-surface_m">تومان</span>
                   </div>

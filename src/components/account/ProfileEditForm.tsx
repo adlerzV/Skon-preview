@@ -62,7 +62,7 @@ export default function ProfileEditForm({ name, email }: ProfileEditFormProps) {
   };
 
   return (
-    <div className="bg-brand-surface border border-brand-surface_hover p-6 flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-brand-surface_m">اطلاعات حساب</span>
         {!isEditing && (

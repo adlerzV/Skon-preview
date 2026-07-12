@@ -9,6 +9,7 @@ import MiniSearchCard from "./MiniSearchCard";
 import { useCart } from "@/context/CartContext";
 import Skeleton from "@/components/ui/Skeleton";
 import { Menu, Search, User, ShoppingCart, X, ChevronDown } from "lucide-react";
+import { useActiveRegion, buildRegionHref } from "@/lib/hooks/useActiveRegion";
 
 interface MobileMenuItem {
   title: string;
@@ -24,8 +25,10 @@ interface MobileMenuProps {
 export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { cart } = useCart();
-  const cartCount = cart.length;
+  const { cart, totalQuantity } = useCart();
+  const cartCount = totalQuantity;
+  const { region: currentRegion } = useActiveRegion();
+  const buildHref = (link: string) => buildRegionHref(currentRegion, link);
 
   const [isOpen, setIsOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
@@ -247,7 +250,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
         <div className="flex-1 overflow-y-auto flex flex-col">
           <nav className="flex flex-col text-right w-full">
             <Link
-              href="/"
+              href={`/${currentRegion}`}
               onClick={closeMenu}
               className={`p-4 text-sm font-bold border-b border-brand-surface transition-colors ${
                 !isBlogSection
@@ -258,7 +261,7 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
               فروشگاه
             </Link>
             <Link
-              href="/blog"
+              href={`/${currentRegion}/blog`}
               onClick={closeMenu}
               className={`p-4 text-sm font-bold border-b border-brand-surface transition-colors ${
                 isBlogSection
@@ -290,9 +293,9 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
                 {activeData.map((item, i) => (
                   <Link
                     key={i}
-                    href={item.link}
+                    href={buildHref(item.link)}
                     onClick={closeMenu}
-                    onMouseEnter={() => router.prefetch(item.link)}
+                    onMouseEnter={() => router.prefetch(buildHref(item.link))}
                     className="flex items-center justify-center p-2 rounded hover:bg-white/5"
                     aria-label={item.title}
                   >
