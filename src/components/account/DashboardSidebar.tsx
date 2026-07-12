@@ -29,7 +29,7 @@ export default function DashboardSidebar({ avatarUrl, name }: DashboardSidebarPr
   };
 
   return (
-    <aside className="w-full lg:w-[260px] shrink-0 bg-brand-surface border-l border-brand-surface_hover flex lg:flex-col">
+    <aside className="w-full lg:w-[260px] shrink-0 bg-brand-surface border-l border-brand-surface_hover flex lg:flex-col lg:h-screen lg:sticky lg:top-0">
       <div className="hidden lg:flex flex-col items-center gap-3 p-6 border-b border-brand-surface_hover">
         <UserAvatar src={avatarUrl} name={name} size="lg" ring />
         <span className="text-sm font-bold text-white truncate max-w-full">{name}</span>
@@ -39,7 +39,7 @@ export default function DashboardSidebar({ avatarUrl, name }: DashboardSidebarPr
         </Link>
       </div>
 
-      <nav className="flex lg:flex-col w-full overflow-x-auto lg:overflow-visible">
+      <nav className="flex lg:flex-col lg:flex-1 w-full overflow-x-auto lg:overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname?.startsWith(href);
           return (
@@ -58,7 +58,7 @@ export default function DashboardSidebar({ avatarUrl, name }: DashboardSidebarPr
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-5 py-3.5 text-sm font-semibold whitespace-nowrap text-red-500 hover:bg-red-500/10 transition-colors mt-auto"
+          className="flex items-center gap-3 px-5 py-3.5 text-sm font-semibold whitespace-nowrap text-red-500 hover:bg-red-500/10 transition-colors mt-auto shrink-0 lg:border-t lg:border-brand-surface_hover"
         >
           <LogOut size={18} strokeWidth={2.25} />
           خروج از حساب

@@ -1,4 +1,3 @@
-// FILE: src/lib/graphql/auth.ts
 import "server-only";
 
 export const LOGIN_MUTATION = `
@@ -49,7 +48,7 @@ export const CUSTOMER_ORDERS_QUERY = `
             nodes {
               id databaseId quantity total
               fulfillmentStatus
-              product { name databaseId }
+              product { node { name databaseId } }
               metaData { key value }
             }
           }

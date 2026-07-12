@@ -22,6 +22,22 @@ export interface CartItem {
     email?: string;
     password?: string;
   };
+  quantity: number;
+}
+
+export type NewCartItem = Omit<CartItem, "id" | "quantity">;
+
+function buildIdentityKey(item: NewCartItem): string {
+  const cf = item.customFields || {};
+  return [
+    item.databaseId,
+    item.deliveryMethod,
+    item.region ?? "",
+    item.variationName ?? "",
+    cf.email ?? "",
+    cf.password ?? "",
+    cf.battleTag ?? "",
+  ].join("::");
 }
 
 function isValidCartItem(item: unknown): item is CartItem {
@@ -32,6 +48,8 @@ function isValidCartItem(item: unknown): item is CartItem {
     typeof i.databaseId === "number" &&
     typeof i.name === "string" &&
     typeof i.price === "number" &&
+    typeof i.quantity === "number" &&
+    i.quantity > 0 &&
     ["gift", "code", "direct"].includes(i.deliveryMethod as string)
   );
 }
@@ -49,10 +67,12 @@ function parseStoredCart(raw: string | null): CartItem[] {
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: CartItem) => void;
+  addToCart: (item: NewCartItem) => void;
   removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   totalPrice: number;
+  totalQuantity: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -77,10 +97,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(timer);
   }, [cart, isMounted]);
 
-  const addToCart = useCallback((item: CartItem) => {
+  const addToCart = useCallback((item: NewCartItem) => {
     setCart((prev) => {
-      if (prev.some((existing) => existing.id === item.id)) return prev;
-      return [...prev, item];
+      const key = buildIdentityKey(item);
+      const existingIndex = prev.findIndex((p) => buildIdentityKey(p) === key);
+
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + 1,
+        };
+        return updated;
+      }
+
+      return [...prev, { ...item, id: key, quantity: 1 }];
     });
   }, []);
 
@@ -88,15 +119,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCart((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const updateQuantity = useCallback((id: string, quantity: number) => {
+    setCart((prev) => {
+      if (quantity <= 0) return prev.filter((item) => item.id !== id);
+      return prev.map((item) => (item.id === id ? { ...item, quantity } : item));
+    });
+  }, []);
+
   const clearCart = useCallback(() => {
     setCart([]);
     removeClientCookie(CART_COOKIE);
   }, []);
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, totalPrice }}>
+    <CartContext.Provider
+      value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, totalPrice, totalQuantity }}
+    >
       {children}
     </CartContext.Provider>
   );

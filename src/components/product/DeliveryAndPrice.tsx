@@ -277,7 +277,6 @@ export default function DeliveryAndPrice({
       selectedVariation.databaseId !== productId ? selectedVariation.databaseId : undefined;
 
     addToCart({
-      id: `${selectedVariation.databaseId}-${deliveryType}`,
       databaseId: selectedVariation.databaseId,
       productId,
       variationId: variationIdValue,
