@@ -10,6 +10,7 @@ export interface SessionUser {
   name: string;
   email: string;
   avatarUrl: string | null;
+  isStaff: boolean;
 }
 
 const VIEWER_QUERY = `
@@ -20,6 +21,7 @@ const VIEWER_QUERY = `
       name
       email
       avatarUrl
+      isStaff
       activeSessionValid(sessionId: $sessionId)
     }
   }
@@ -46,9 +48,9 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     if (data.viewer.activeSessionValid === false) return null;
 
     const viewer = data.viewer;
-    const avatarUrl = await resolveAvatarUrl(viewer.avatarUrl);
+    const avatarUrl = await resolveAvatarUrl(viewer.avatarUrl, viewer.databaseId);
 
-    return { ...viewer, avatarUrl } as SessionUser;
+    return { ...viewer, avatarUrl, isStaff: Boolean(viewer.isStaff) } as SessionUser;
   } catch {
     return null;
   }

@@ -13,19 +13,26 @@ interface TicketNode {
   date?: string;
   ticketStatus?: string;
   linkedOrderId?: number | null;
+  customerName?: string | null;
 }
-interface PageInfo { hasNextPage: boolean; endCursor: string | null; }
+
+interface PageInfo {
+  hasNextPage: boolean;
+  endCursor: string | null;
+}
 
 const STATUS_TONE: Record<string, "blue" | "sabz" | "zard" | "red" | "neutral"> = {
   open: "zard",
   answered: "blue",
   closed: "neutral",
 };
+
 const STATUS_LABEL: Record<string, string> = {
   open: "باز",
   answered: "پاسخ داده‌شده",
   closed: "بسته‌شده",
 };
+
 const STATUS_OPTIONS = [
   { value: "ALL", label: "همه وضعیت‌ها" },
   { value: "open", label: "باز" },
@@ -50,7 +57,9 @@ export default function TicketsPaginated({
     if (!pageInfo.endCursor) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/account/tickets?after=${encodeURIComponent(pageInfo.endCursor)}`, { cache: "no-store" });
+      const res = await fetch(`/api/account/tickets?after=${encodeURIComponent(pageInfo.endCursor)}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       setTickets((prev) => [...prev, ...(data.tickets ?? [])]);
       setPageInfo(data.pageInfo ?? { hasNextPage: false, endCursor: null });
@@ -87,7 +96,9 @@ export default function TicketsPaginated({
           className="bg-brand-surface border border-brand-surface_hover px-3 py-2.5 text-sm text-brand-active focus:outline-none focus:border-brand-blue"
         >
           {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
       </div>
@@ -103,11 +114,18 @@ export default function TicketsPaginated({
                 <Card className="p-5 flex flex-wrap items-center justify-between gap-3 hover:bg-brand-surface_hover transition-colors">
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-white text-sm">{ticket.title}</span>
-                    {ticket.date && (
-                      <span className="text-xs text-brand-m_khonsa">
-                        {new Date(ticket.date).toLocaleDateString("fa-IR")}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {ticket.date && (
+                        <span className="text-xs text-brand-m_khonsa">
+                          {new Date(ticket.date).toLocaleDateString("fa-IR")}
+                        </span>
+                      )}
+                      {ticket.customerName && (
+                        <span className="text-[11px] text-brand-blue bg-brand-blue/10 border border-brand-blue/20 px-2 py-0.5 rounded">
+                          {ticket.customerName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {ticket.linkedOrderId && (

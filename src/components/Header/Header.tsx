@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { getHeaderCategories, getHeaderBlogCategories, getRegions } from "@/lib/graphql";
 import { getCurrentUser } from "@/lib/auth/session";
+import Skeleton from "@/components/ui/Skeleton";
 
 const ACTION_BUTTON_CLASSES =
   "flex items-center gap-2.5 px-3 py-4 cursor-pointer text-brand-m_khonsa text-[14px] font-semibold transition-colors duration-150 hover:bg-brand-surface hover:text-white";
@@ -62,7 +63,7 @@ export default async function Header() {
             <span>پشتیبانی</span>
           </Link>
 
-          <UserActions user={user ? { name: user.name, avatarUrl: user.avatarUrl } : null} />
+          <UserActions user={user ? { name: user.name, avatarUrl: user.avatarUrl, isStaff: user.isStaff } : null} />
         </div>
       </div>
 
@@ -76,7 +77,7 @@ export default async function Header() {
           <HeaderSearch />
 
           <div className="flex items-center justify-center h-full">
-            <Suspense fallback={<div className="w-[140px] h-[60px] bg-brand-surface/50 animate-pulse rounded-[4px]" />}>
+            <Suspense fallback={<Skeleton className="w-[140px] h-[60px] rounded-[4px]" />}>
               <RegionSwitcher regions={regions} initialRegion={activeRegion} />
             </Suspense>
           </div>

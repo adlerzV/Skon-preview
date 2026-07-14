@@ -223,6 +223,8 @@ export async function getPostDetail(slug: string) {
   };
 }
 
+import { resolveAvatarForAuthor } from "@/lib/avatars";
+
 export async function getProductDetail(slug: string, activeRegion: string = "eu") {
   if (!slug) return null;
 
@@ -239,8 +241,12 @@ export async function getProductDetail(slug: string, activeRegion: string = "eu"
           averageRating
           reviewCount
           reviews(first: 20) {
+            pageInfo { hasNextPage endCursor }
             nodes {
               id
+              databaseId
+              parentDatabaseId
+              isStaffReply
               content
               date
               author {
@@ -262,7 +268,31 @@ export async function getProductDetail(slug: string, activeRegion: string = "eu"
 
   if (!data?.product) return null;
   const formatted = formatProducts([data.product], false, activeRegion);
-  return formatted[0] ?? null;
+  const product = formatted[0] ?? null;
+  if (!product) return null;
+
+  if (product.reviews?.nodes && Array.isArray(product.reviews.nodes)) {
+    product.reviews.nodes = await Promise.all(
+      product.reviews.nodes.map(async (r: any) => {
+        const authorNode = r.author?.node;
+        const authorName = authorNode?.name || "چرا اسم ندارم";
+        const originalAvatar = authorNode?.avatarUrl || null;
+
+        return {
+          ...r,
+          author: {
+            ...r.author,
+            node: {
+              ...authorNode,
+              avatarUrl: await resolveAvatarForAuthor(authorName, originalAvatar),
+            },
+          },
+        };
+      })
+    );
+  }
+
+  return product;
 }
 
 export async function getRegions() {

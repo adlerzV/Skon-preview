@@ -29,7 +29,7 @@ export default function SessionsList({
     setError("");
     setRevokingId(sessionId);
     try {
-      const res = await fetch("/api/account/sessions/revoke", {
+      const res = await fetch("/api/account/revoke", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
