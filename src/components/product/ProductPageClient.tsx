@@ -532,6 +532,7 @@ export default function ProductPageClient({
       <ProductReviews
         productId={product.databaseId}
         reviews={product.reviews?.nodes}
+        pageInfo={product.reviews?.pageInfo}
         averageRating={product.averageRating ?? 0}
         reviewCount={product.reviewCount}
       />

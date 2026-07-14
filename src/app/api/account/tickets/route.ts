@@ -14,6 +14,7 @@ const TICKETS_QUERY = `
         date
         ticketStatus
         linkedOrderId
+        customerName
       }
     }
   }

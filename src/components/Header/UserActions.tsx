@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import Skeleton from "@/components/ui/Skeleton";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { useLogout } from "@/lib/hooks/useLogout";
+import AdminBadge from "@/components/ui/AdminBadge";
 
 interface UserActionsProps {
-  user: { name: string; avatarUrl?: string | null } | null;
+  user: { name: string; avatarUrl?: string | null; isStaff?: boolean } | null;
 }
 
 export default function UserActions({ user }: UserActionsProps) {
@@ -58,7 +59,10 @@ export default function UserActions({ user }: UserActionsProps) {
           <>
             <div className="flex items-center gap-3 p-2.5 mb-1.5 bg-white/5 rounded-md border border-white/5">
               <UserAvatar src={user!.avatarUrl} name={user!.name} size="md" />
-              <div className="text-white font-semibold text-sm text-right truncate">{user!.name}</div>
+              <div className="flex items-center gap-1.5 text-right truncate">
+                <span className="text-white font-semibold text-sm truncate">{user!.name}</span>
+                {user!.isStaff && <AdminBadge />}
+              </div>
             </div>
             <Link href="/my-account" onMouseEnter={prefetchAccount} className="flex items-center gap-2.5 p-2.5 text-brand-m_khonsa text-[13px] font-semibold transition-colors hover:bg-white/5 hover:text-white rounded text-right w-full">پیشخوان من</Link>
             <Link href="/my-account/orders" onMouseEnter={prefetchOrders} className="flex items-center gap-2.5 p-2.5 text-brand-m_khonsa text-[13px] font-semibold transition-colors hover:bg-white/5 hover:text-white rounded text-right w-full">سفارشات</Link>

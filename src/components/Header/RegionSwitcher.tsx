@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
 
 interface Region {
@@ -43,9 +44,19 @@ export default function RegionSwitcher({ regions, initialRegion }: RegionSwitche
 
   if (!firstSegmentIsRegion) {
     return (
-      <div className="flex items-center justify-center h-[60px] w-[140px]">
-        <span className="text-white/40 text-[12px] font-semibold tracking-wider">Arena2Battle</span>
-      </div>
+      <Link
+        href="/"
+        className="flex items-center justify-center h-[60px] w-[140px] bg-brand-surface hover:bg-brand-surface_hover transition-colors rounded-[5px]"
+        aria-label="بازگشت به فروشگاه"
+      >
+        <Image
+          src="/images/arena2battleLogo.webp"
+          alt="Arena2Battle"
+          width={90}
+          height={36}
+          className="h-9 w-auto object-contain opacity-90"
+        />
+      </Link>
     );
   }
   

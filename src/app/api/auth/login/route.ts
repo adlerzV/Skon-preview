@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { cookies } from "next/headers";
 import { fetchGraphQL } from "@/lib/graphql";
 import { LOGIN_MUTATION, REGISTER_SESSION_MUTATION } from "@/lib/graphql/auth";
 import {
@@ -7,6 +8,7 @@ import {
   REFRESH_TOKEN_COOKIE,
   LOGGED_IN_COOKIE,
   SESSION_ID_COOKIE,
+  IS_STAFF_COOKIE,
   AUTH_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
 } from "@/lib/auth/constants";
@@ -38,7 +40,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "نام کاربری یا رمز عبور اشتباه است" }, { status: 401 });
     }
 
-    const sessionId = randomUUID();
+    const cookieStore = await cookies();
+    const existingSessionId = cookieStore.get(SESSION_ID_COOKIE)?.value;
+    const sessionId = existingSessionId || randomUUID();
+
     const userAgent = request.headers.get("user-agent") || "";
 
     await fetchGraphQL(
@@ -71,6 +76,10 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set(SESSION_ID_COOKIE, sessionId, {
       httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
+
+    response.cookies.set(IS_STAFF_COOKIE, result.user.isStaff ? "1" : "0", {
+      httpOnly: false, secure: isProd, sameSite: "lax", path: "/", maxAge: REFRESH_TOKEN_MAX_AGE,
     });
 
     return response;

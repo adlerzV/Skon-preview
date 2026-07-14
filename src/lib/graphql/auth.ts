@@ -10,15 +10,16 @@ export const LOGIN_MUTATION = `
         databaseId
         name
         email
+        isStaff
       }
     }
   }
 `;
 
-export const REFRESH_TOKEN_MUTATION = `
-  mutation RefreshAuthToken($refreshToken: String!) {
-    refreshJwtAuthToken(input: { jwtRefreshToken: $refreshToken }) {
-      authToken
+export const REPLY_TO_REVIEW_MUTATION = `
+  mutation ReplyToProductReview($reviewId: Int!, $content: String!) {
+    replyToProductReview(input: { reviewId: $reviewId, content: $content }) {
+      success
     }
   }
 `;
@@ -197,6 +198,13 @@ export const GET_SESSIONS_QUERY = `
         lastActive
         createdAt
       }
+    }
+  }
+`;
+export const REFRESH_TOKEN_MUTATION = `
+  mutation RefreshToken($refreshToken: String!) {
+    refreshJwtAuthToken(input: { jwtRefreshToken: $refreshToken }) {
+      authToken
     }
   }
 `;

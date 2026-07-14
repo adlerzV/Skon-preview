@@ -80,7 +80,9 @@ export async function fetchGraphQL(
 
     if (json.errors) {
       console.error("GraphQL Errors:", JSON.stringify(json.errors, null, 2));
-      return null;
+      if (!json.data) {
+        return null;
+      }
     }
 
     return json.data;

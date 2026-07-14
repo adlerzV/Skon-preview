@@ -45,8 +45,12 @@ export interface ProductNode {
   averageRating?: number;
   reviewCount?: number;
   reviews?: {
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
     nodes: Array<{
       id: string;
+      databaseId?: number;
+      parentDatabaseId?: number;
+      isStaffReply?: boolean;
       content: string;
       date?: string;
       author?: { node?: { name?: string; avatarUrl?: string } };

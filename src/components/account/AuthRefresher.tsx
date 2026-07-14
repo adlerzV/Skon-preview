@@ -1,21 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getClientCookie } from "@/lib/cookies";
 import { LOGGED_IN_COOKIE } from "@/lib/auth/constants";
 
-const REFRESH_INTERVAL_MS = 20 * 60 * 60 * 1000;
+const REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+async function refreshToken() {
+  try {
+    await fetch("/api/auth/refresh", { method: "POST" });
+  } catch {
+  }
+}
 
 export default function AuthRefresher() {
+  const isRefreshingRef = useRef(false);
+
   useEffect(() => {
-    const isLoggedIn = getClientCookie(LOGGED_IN_COOKIE) === "1";
-    if (!isLoggedIn) return;
+    const isLoggedIn = () => getClientCookie(LOGGED_IN_COOKIE) === "1";
 
-    const interval = setInterval(() => {
-      fetch("/api/auth/refresh", { method: "POST" }).catch(() => {});
-    }, REFRESH_INTERVAL_MS);
+    const safeRefresh = async () => {
+      if (!isLoggedIn() || isRefreshingRef.current) return;
+      isRefreshingRef.current = true;
+      await refreshToken();
+      isRefreshingRef.current = false;
+    };
 
-    return () => clearInterval(interval);
+    safeRefresh();
+
+    const interval = setInterval(safeRefresh, REFRESH_INTERVAL_MS);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") safeRefresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   return null;
