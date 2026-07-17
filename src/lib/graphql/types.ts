@@ -33,11 +33,13 @@ export interface ProductNode {
   secondaryGallery?: Array<{ description: string; imageUrl: string }> | null;
   description?: string;
   image?: { sourceUrl: string } | null;
+  imageLarge?: { sourceUrl: string } | null;
   price?: string;
   regularPrice?: string;
   salePrice?: string;
   parsedPrice?: number | null;
   parsedRegularPrice?: number | null;
+  isAvailableInRegion?: boolean;
   variationCards?: VariationCard[];
   isVariation?: boolean;
   defaultVariationId?: number;
@@ -77,4 +79,13 @@ export interface HeaderCategoryNode {
   slug: string;
   image?: { sourceUrl: string } | null;
   categoryImage?: { sourceUrl: string } | null;
+}
+
+export interface HeroTabItem {
+  tabLabel: string;
+  heading: string;
+  description: string;
+  ctaText?: string;
+  ctaLink?: string;
+  imageUrl: string;
 }

@@ -319,7 +319,7 @@ export default function ProductPageClient({
       }
     };
 
-    add(product.image?.sourceUrl);
+    add(product.imageLarge?.sourceUrl || product.image?.sourceUrl);
     for (const v of variations) add(v.imageUrl);
     for (const g of product.galleryImages?.nodes ?? []) add(g.sourceUrl);
 
@@ -339,7 +339,11 @@ export default function ProductPageClient({
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
 
   const displayImage =
-    selectedGalleryImage || firstBranchVarImageUrl || product.image?.sourceUrl?.trim() || "/placeholder.jpg";
+    selectedGalleryImage ||
+    firstBranchVarImageUrl ||
+    product.imageLarge?.sourceUrl?.trim() ||
+    product.image?.sourceUrl?.trim() ||
+    "/placeholder.jpg";
 
   const currentIndex = useMemo(() => {
     const idx = allGalleryImages.indexOf(displayImage);

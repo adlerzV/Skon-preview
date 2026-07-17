@@ -1,5 +1,6 @@
 import { getHomePageData } from "@/lib/graphql"; 
 import CategoryHero from "@/components/Hero"; 
+import SecondaryHero from "@/components/SecondaryHero";
 import nextDynamic from "next/dynamic";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -22,13 +23,15 @@ const DynamicProductGrid = nextDynamic(() => import("@/components/ProductGrid"),
 
 export default async function Home({ params }: HomeProps) {
   const { region } = await params;
-  const { banners, featured, latest } = await getHomePageData(region);
+  const { banners, featured, latest, heroTabs } = await getHomePageData(region);
 
   return (
     <main className="container mx-auto px-6 max-w-site pb-12">
       <CategoryHero banners={banners} />
       <DynamicProductGrid title="محصولات ویژه و پرطرفدار" products={featured} activeRegion={region} />
+      <SecondaryHero sectionTitle="پیشنهاد ویژه این هفته" tabs={heroTabs} />
       <DynamicProductGrid title="جدیدترین محصولات" products={latest} activeRegion={region} />
+      
     </main>
   );
 }

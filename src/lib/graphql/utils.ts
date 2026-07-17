@@ -8,6 +8,26 @@ export const sanitizeHtml = (html?: string | null): string | undefined => {
   return DOMPurify.sanitize(html);
 };
 
+const REGION_ALIASES: Record<string, string[]> = {
+  eu: ["eu", "eu-global", "اروپا", "europe"],
+  us: ["us", "امریکا", "آمریکا", "america", "usa"],
+  tr: ["tr", "ترکیه", "turkey"],
+};
+
+function normalizeRegionToken(token?: string | null): string {
+  if (!token) return "";
+  const lower = token.trim().toLowerCase();
+  for (const [canon, aliases] of Object.entries(REGION_ALIASES)) {
+    if (aliases.some((alias) => lower === alias || lower.includes(alias))) return canon;
+  }
+  return lower;
+}
+
+export function regionsMatch(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  return normalizeRegionToken(a) === normalizeRegionToken(b);
+}
+
 export const formatProducts = (
   products: ProductNode[],
   archiveMode: boolean = false,
@@ -48,12 +68,11 @@ export const formatProducts = (
 
     let finalPrice: number | null = null;
     let finalRegularPrice: number | null = null;
+    let isAvailableInRegion = true;
 
     if (parsedVariationCards.length > 0) {
-      const regionVars = parsedVariationCards.filter(
-        (v) => v.regionSlug?.toLowerCase() === activeRegion.toLowerCase()
-      );
-
+      const hasRegionAttr = parsedVariationCards.some((v) => !!v.regionSlug);
+      const regionVars = parsedVariationCards.filter((v) => regionsMatch(v.regionSlug, activeRegion));
       const targetVars = regionVars.length > 0 ? regionVars : parsedVariationCards;
       const validPrices = targetVars.filter((v) => typeof v.parsedPrice === "number" && v.parsedPrice > 0);
 
@@ -62,12 +81,21 @@ export const formatProducts = (
         finalPrice = lowestVar.parsedPrice;
         finalRegularPrice = lowestVar.parsedRegularPrice;
       } else {
-        finalPrice = targetVars[0].parsedPrice;
-        finalRegularPrice = targetVars[0].parsedRegularPrice;
+        finalPrice = targetVars[0]?.parsedPrice ?? null;
+        finalRegularPrice = targetVars[0]?.parsedRegularPrice ?? null;
       }
+
+      const hasGiftOrCode = targetVars.some(
+        (v) => typeof v.parsedGiftPrice === "number" || typeof v.parsedCodePrice === "number"
+      );
+
+      isAvailableInRegion = hasRegionAttr
+        ? regionVars.length > 0 && (validPrices.length > 0 || hasGiftOrCode)
+        : validPrices.length > 0 || hasGiftOrCode || finalPrice != null;
     } else {
       finalPrice = parsePrice(product.price);
       finalRegularPrice = parsePrice(product.regularPrice);
+      isAvailableInRegion = finalPrice != null && finalPrice > 0;
     }
 
     formattedProducts.push({
@@ -78,6 +106,7 @@ export const formatProducts = (
       parsedRegularPrice: finalRegularPrice,
       variationCards: parsedVariationCards,
       isVariation: parsedVariationCards.length > 0,
+      isAvailableInRegion,
     });
   });
 

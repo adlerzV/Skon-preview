@@ -1,4 +1,3 @@
-// src/components/Footer/Footer.tsx
 import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
@@ -70,7 +69,7 @@ return (
         </div>
 
         <Link
-          href={TOKEN_PRICE_URL}
+          href="https://wowtokenprice.com"
           target="_blank"
           rel="noopener noreferrer"
           className="self-start inline-flex items-center justify-center gap-2.5 min-w-[240px] bg-brand-surface hover:bg-brand-surface_hover border border-brand-surface_hover hover:border-brand-blue/50 text-white text-sm font-bold px-9 py-3.5 transition-colors"
@@ -85,15 +84,16 @@ return (
           </span>
           
           <Link
-            href="https://github.com/adlerzY"
+            href="https://adlerzy.github.io/campfire"
             target="_blank"
             rel="noopener noreferrer"
             className="order-1 sm:order-2 group flex items-center gap-2 text-[13px]"
           >
-            <span className="text-brand-m_khonsa">ساخته‌شده با (خودمم نمیدونم چطوری)</span>
+            <span className="text-brand-m_khonsa">ساخته‌شده با </span>
             <span className="font-black tracking-wide bg-gradient-to-l from-brand-blue via-brand-zard to-brand-sabz bg-clip-text text-transparent group-hover:tracking-widest transition-all duration-300">
               ⚗️✨ جادوی adlerz 🪄
             </span>
+            <span className="text-brand-m_khonsa">(خودمم نمیدونم چطوری)</span>
           </Link>
         </div>
       </div>

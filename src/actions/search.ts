@@ -30,7 +30,9 @@ export async function searchProductsByKeyword(keyword: string) {
       "no-store"
     );
 
-    return formatProducts(data?.products?.nodes || [], true, activeRegion);
+    return formatProducts(data?.products?.nodes || [], true, activeRegion).filter(
+      (p) => p.isAvailableInRegion !== false
+    );
   } catch (error) {
     console.error("searchProductsByKeyword error:", error);
     return [];

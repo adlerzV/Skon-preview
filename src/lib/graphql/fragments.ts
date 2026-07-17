@@ -73,6 +73,17 @@ export const BANNER_FIELDS = `
   }
 `;
 
+export const HERO_TAB_FIELDS = `
+  fragment HeroTabFields on HeroTabItem {
+    tabLabel
+    heading
+    description
+    ctaText
+    ctaLink
+    imageUrl
+  }
+`;
+
 export const CATEGORY_BASIC_FIELDS = `
   fragment CategoryBasicFields on ProductCategory {
     id
