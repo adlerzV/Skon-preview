@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Heart, Loader2 } from "lucide-react";
 import { ProductNode } from "@/lib/graphql";
 
@@ -15,14 +15,16 @@ interface ProductCardProps {
   onRemovedFromWishlist?: (productId: number) => void;
 }
 
-export default function ProductCard({ product, activeRegion, variant = "price", onRemovedFromWishlist }: ProductCardProps) {
+function ProductCard({ product, activeRegion, variant = "price", onRemovedFromWishlist }: ProductCardProps) {
   const [isRemoving, setIsRemoving] = useState(false);
   const [removed, setRemoved] = useState(false);
 
-  const category = product.productCategories?.nodes?.[0];
+  const categoryNodes = product.productCategories?.nodes ?? [];
+  const category = categoryNodes[0];
   const categorySlug = category?.slug || "uncategorized";
   const categoryName = category?.name || "بدون دسته";
   const categoryLogo = category?.image?.sourceUrl;
+  const subCategories = categoryNodes.slice(1, 4);
 
   const currentMinPrice = product.parsedPrice;
   const regularMinPrice = product.parsedRegularPrice ? Number(product.parsedRegularPrice) : null;
@@ -112,38 +114,37 @@ export default function ProductCard({ product, activeRegion, variant = "price", 
 
           {variant === "price" && (
             <>
-              <div
-                className="text-[#ffb400] text-[13px] mb-1 line-clamp-3 overflow-hidden"
-                dangerouslySetInnerHTML={{ __html: product.shortDescription || "خدمات دیجیتال و درون‌برنامه‌ای" }}
-              />
-              <div className="text-[#8e98b0] text-[10px] font-medium leading-relaxed mb-2 line-clamp-1">
-                تحویل آنی و تضمین شده در ریجن {targetRegion.toUpperCase()}
-              </div>
+              {product.shortDescription && (
+                <div
+                  className="text-[#ffb400] text-[13px] mb-1 line-clamp-3 overflow-hidden"
+                  dangerouslySetInnerHTML={{ __html: product.shortDescription }}
+                />
+              )}
+              {subCategories.length > 0 && (
+                <div className="text-[#8e98b0] text-[10px] font-medium leading-relaxed mb-2 line-clamp-1">
+                  {subCategories.map((sc) => `[${sc.name}]`).join(" ")}
+                </div>
+              )}
             </>
           )}
         </div>
 
         <div className="mt-auto flex items-end justify-between pt-3">
           {variant === "price" ? (
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1 w-full">
               {currentMinPrice ? (
                 <>
-                  <span className="text-[#8e98b0] text-[11px] font-medium mb-1">شروع قیمت:</span>
-                  {isActualSale ? (
-                    <div className="flex flex-col">
-                      <span className="text-[#75dd04] font-bold text-base md:text-[17px] flex items-center gap-1.5">
-                        {formatToPersianDigits(currentMinPrice)}
-                        <span className="text-[12px] font-normal text-white">تومان</span>
-                      </span>
-                      <del className="text-[#8e98b0] text-[12px] opacity-70 mt-0.5 inline-block w-fit">
-                        {formatToPersianDigits(regularMinPrice!)}
-                      </del>
-                    </div>
-                  ) : (
-                    <span className="text-white font-bold text-base md:text-[17px] flex items-center gap-1.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[#8e98b0] text-[11px] font-medium shrink-0">شروع قیمت:</span>
+                    <span className={`font-bold text-base md:text-[17px] flex items-center gap-1.5 ${isActualSale ? "text-[#75dd04]" : "text-white"}`}>
                       {formatToPersianDigits(currentMinPrice)}
-                      <span className="text-[12px] font-normal text-[#8e98b0]">تومان</span>
+                      <span className={`text-[12px] font-normal ${isActualSale ? "text-white" : "text-[#8e98b0]"}`}>تومان</span>
                     </span>
+                  </div>
+                  {isActualSale && (
+                    <del className="text-[#8e98b0] text-[12px] opacity-70 self-end">
+                      {formatToPersianDigits(regularMinPrice!)}
+                    </del>
                   )}
                 </>
               ) : (
@@ -166,3 +167,5 @@ export default function ProductCard({ product, activeRegion, variant = "price", 
     </Link>
   );
 }
+
+export default memo(ProductCard);

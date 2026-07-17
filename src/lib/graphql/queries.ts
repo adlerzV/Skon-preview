@@ -2,11 +2,12 @@ import "server-only";
 import { fetchGraphQL } from "./client";
 import { formatProducts, sanitizeHtml } from "./utils";
 import { resolveAvatarUrl } from "@/lib/avatars";
-import { HeaderCategoryNode, ProductNode } from "./types";
+import { HeaderCategoryNode, HeroTabItem, ProductNode } from "./types";
 import {
   CATEGORY_BASIC_FIELDS,
   PRODUCT_CARD_FIELDS,
   BANNER_FIELDS,
+  HERO_TAB_FIELDS,
 } from "./fragments";
 
 interface Banner {
@@ -22,6 +23,13 @@ function safeBannerUrls(banners: Banner[]): Banner[] {
     ...b,
     imageUrl: b.imageUrl ? encodeURI(b.imageUrl) : "",
     secondimage: b.secondimage ? encodeURI(b.secondimage) : "",
+  }));
+}
+
+function safeHeroTabUrls(tabs: HeroTabItem[]): HeroTabItem[] {
+  return tabs.map((t) => ({
+    ...t,
+    imageUrl: t.imageUrl ? encodeURI(t.imageUrl) : "",
   }));
 }
 
@@ -64,7 +72,9 @@ export async function getProducts(categorySlug?: string, activeRegion: string = 
     tags
   );
 
-  return formatProducts(data?.products?.nodes ?? [], true, activeRegion);
+  return formatProducts(data?.products?.nodes ?? [], true, activeRegion).filter(
+    (p) => p.isAvailableInRegion !== false
+  );
 }
 
 export async function getProductsByIds(ids: number[], activeRegion: string = "eu"): Promise<ProductNode[]> {
@@ -130,7 +140,9 @@ export async function getCategoryArchive(slug: string, activeRegion: string = "e
     ...categoryData.productCategory,
     banners: safeBannerUrls(bannersData?.productCategory?.banners ?? []),
     products: {
-      nodes: formatProducts(categoryData.products?.nodes ?? [], true, activeRegion),
+      nodes: formatProducts(categoryData.products?.nodes ?? [], true, activeRegion).filter(
+        (p) => p.isAvailableInRegion !== false
+      ),
     },
   };
 }
@@ -140,9 +152,11 @@ export async function getHomePageData(activeRegion: string = "eu") {
     `
       ${PRODUCT_CARD_FIELDS}
       ${BANNER_FIELDS}
+      ${HERO_TAB_FIELDS}
       query GetHomePage {
         homeBanners: productCategory(id: "home", idType: SLUG) {
           banners { ...BannerFields }
+          heroTabs { ...HeroTabFields }
         }
         featuredProducts: products(first: 12, where: { featured: true, status: "PUBLISH" }) {
           nodes { ...ProductCardFields }
@@ -158,13 +172,18 @@ export async function getHomePageData(activeRegion: string = "eu") {
   );
 
   if (!data) {
-    return { banners: [], featured: [] as ProductNode[], latest: [] as ProductNode[] };
+    return { banners: [], heroTabs: [] as HeroTabItem[], featured: [] as ProductNode[], latest: [] as ProductNode[] };
   }
 
   return {
     banners: safeBannerUrls(data.homeBanners?.banners ?? []),
-    featured: formatProducts(data.featuredProducts?.nodes ?? [], true, activeRegion),
-    latest: formatProducts(data.latestProducts?.nodes ?? [], true, activeRegion),
+    heroTabs: safeHeroTabUrls(data.homeBanners?.heroTabs ?? []),
+    featured: formatProducts(data.featuredProducts?.nodes ?? [], true, activeRegion).filter(
+      (p) => p.isAvailableInRegion !== false
+    ),
+    latest: formatProducts(data.latestProducts?.nodes ?? [], true, activeRegion).filter(
+      (p) => p.isAvailableInRegion !== false
+    ),
   };
 }
 
@@ -232,6 +251,7 @@ export async function getProductDetail(slug: string, activeRegion: string = "eu"
       query GetProductDetail($id: ID!) {
         product(id: $id, idType: SLUG) {
           ...ProductCardFields
+          imageLarge: image { sourceUrl(size: LARGE) }
           description
           secondaryGallery { description imageUrl }
           galleryImages { nodes { sourceUrl(size: LARGE) } }
