@@ -14,25 +14,25 @@ interface ContactChannel {
 
 const CONTACT_CHANNELS: ContactChannel[] = [
   {
-    icon: "/images/support/telegram.png",
+    icon: "/images/support/achievement.jpg",
     label: "تلگرام",
     value: "@Arena2BattleSupport",
     href: "https://t.me/Arena2BattleSupport",
     responseTime: "پاسخ در کمتر از ۵ دقیقه",
   },
   {
-    icon: "/images/support/whatsapp.png",
-    label: "واتساپ",
+    icon: "/images/support/Discord-Emblem.webp",
+    label: "دیسکورد",
     value: "پاسخگویی آنلاین",
-    href: "https://wa.me/989120000000",
+    href: "https://wa.me/idddddd",
     responseTime: "پاسخگویی آنلاین و سریع",
   },
   {
-    icon: "/images/support/email.png",
-    label: "ایمیل",
-    value: "support@arena2battle.com",
+    icon: "/images/support/flash.webp",
+    label: "شماره تماس",
+    value: "00000000000000",
     href: "mailto:support@arena2battle.com",
-    responseTime: "پاسخ در کمتر از ۲۴ ساعت",
+    responseTime: "پاسخ گویی فوری",
   },
 ];
 
