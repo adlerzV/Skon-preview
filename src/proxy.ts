@@ -1,10 +1,11 @@
+// src/proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 
 const KNOWN_REGIONS = ["eu", "us", "tr"];
 const DEFAULT_REGION = "eu";
 const REGION_COOKIE = "store_region";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (

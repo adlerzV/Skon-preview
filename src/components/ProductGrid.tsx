@@ -11,8 +11,8 @@ export default function ProductGrid({ products, title, activeRegion }: ProductGr
   if (!products || products.length === 0) {
     return (
       <div className="w-full my-4 bg-brand-surface backdrop-blur-xl border border-white/5 p-10 flex flex-col items-center justify-center gap-1.5 text-center">
-        <p className="text-brand-m_khonsa font-semibold text-lg">به نظر می‌رسه تو این ریجن چیزی نداریم 🌍</p>
-        <p className="text-brand-surface_m text-sm">یه ریجن دیگه رو از بالای سایت امتحان کن</p>
+        <p className="text-brand-m_khonsa font-semibold text-lg">به نظر می‌رسه تو این ریجن چیزی نداریم</p>
+        <p className="text-brand-surface_m text-sm">یه ریجن دیگه رو از بالا سمت چپ سایت انتخاب کن</p>
       </div>
     );
   }
