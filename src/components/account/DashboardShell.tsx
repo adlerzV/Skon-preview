@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import DashboardSidebar from "./DashboardSidebar";
 import UserAvatar from "@/components/ui/UserAvatar";
 import NotificationBell from "./NotificationBell";
+import MobileBottomNav from "@/components/Header/MobileBottomNav";
 
 interface DashboardShellProps {
   user: { avatarUrl?: string | null; name: string; isStaff?: boolean };
@@ -90,10 +91,16 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
           </div>
           <NotificationBell />
         </div>
-        <main className={`flex-1 min-h-0 w-full p-4 md:p-6 ${isFixedDashboard ? "overflow-hidden" : "overflow-y-auto"}`}>
+        <main
+          className={`flex-1 min-h-0 w-full p-4 md:p-6 pb-[calc(58px+env(safe-area-inset-bottom))] lg:pb-6 ${
+            isFixedDashboard ? "overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
           <div className={isFixedDashboard ? "h-full" : ""}>{children}</div>
         </main>
       </div>
+
+      <MobileBottomNav user={{ name: user.name, avatarUrl: user.avatarUrl }} />
     </div>
   );
 }

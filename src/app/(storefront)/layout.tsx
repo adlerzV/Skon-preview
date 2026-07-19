@@ -11,8 +11,10 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <Header />
       </Suspense>
       <SubHeaderBar />
-      {children}
-      <Footer />
+      <div className="pb-[calc(58px+env(safe-area-inset-bottom))] lg:pb-0">
+        {children}
+        <Footer />
+      </div>
     </>
   );
 }

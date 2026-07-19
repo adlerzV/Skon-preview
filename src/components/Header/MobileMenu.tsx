@@ -1,14 +1,16 @@
+// src/components/Header/MobileMenu.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useProductSearch } from "./hooks/useProductSearch";
 import MiniSearchCard from "./MiniSearchCard";
-import { useCart } from "@/context/CartContext";
+import MobileRegionSwitcher from "./MobileRegionSwitcher";
+import UserAvatar from "@/components/ui/UserAvatar";
 import Skeleton from "@/components/ui/Skeleton";
-import { Menu, Search, User, ShoppingCart, X, ChevronDown } from "lucide-react";
+import { Menu, Search, User, X, ChevronDown, ChevronLeft } from "lucide-react";
 import { useActiveRegion, buildRegionHref } from "@/lib/hooks/useActiveRegion";
 
 interface MobileMenuItem {
@@ -17,16 +19,23 @@ interface MobileMenuItem {
   link: string;
 }
 
+interface Region {
+  name: string;
+  slug: string;
+  flagUrl?: string;
+}
+
 interface MobileMenuProps {
   shopItems: MobileMenuItem[];
   blogItems: MobileMenuItem[];
+  user: { name: string; avatarUrl?: string | null } | null;
+  regions: Region[];
+  activeRegion: string;
 }
 
-export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
+export default function MobileMenu({ shopItems, blogItems, user, regions, activeRegion }: MobileMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { cart, totalQuantity } = useCart();
-  const cartCount = totalQuantity;
   const { region: currentRegion } = useActiveRegion();
   const buildHref = (link: string) => buildRegionHref(currentRegion, link);
 
@@ -98,7 +107,11 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
           />
         </Link>
 
-        <div className="flex items-center gap-0.5 h-full">
+        <div className="flex items-center gap-1 h-full">
+          <Suspense fallback={<Skeleton className="w-6 h-4 rounded-[2px]" />}>
+            <MobileRegionSwitcher regions={regions} initialRegion={activeRegion} />
+          </Suspense>
+
           <button
             onClick={() => setIsSearchActive(true)}
             className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors"
@@ -106,27 +119,6 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
           >
             <Search size={20} strokeWidth={2.5} />
           </button>
-
-          <Link
-            href="/my-account"
-            className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors"
-            aria-label="حساب کاربری"
-          >
-            <User size={20} strokeWidth={2.5} />
-          </Link>
-
-          <Link
-            href="/cart"
-            className="flex items-center justify-center w-10 h-10 text-brand-m_khonsa hover:text-white transition-colors relative"
-            aria-label={`سبد خرید — ${cartCount} آیتم`}
-          >
-            <ShoppingCart size={20} strokeWidth={2.5} />
-            {cartCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 bg-brand-blue text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Link>
         </div>
       </div>
 
@@ -247,6 +239,33 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
           </button>
         </div>
 
+        <Link
+          href="/my-account"
+          onClick={closeMenu}
+          className="flex items-center gap-3 px-5 py-4 border-b border-brand-surface shrink-0 hover:bg-white/5 transition-colors"
+        >
+          {user ? (
+            <>
+              <UserAvatar src={user.avatarUrl} name={user.name} size="md" ring />
+              <div className="flex flex-col min-w-0">
+                <span className="text-white font-bold text-sm truncate">{user.name}</span>
+                <span className="text-brand-m_khonsa text-xs">مشاهده حساب کاربری</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center justify-center w-11 h-11 rounded-full bg-white/5 text-brand-m_khonsa shrink-0">
+                <User size={20} strokeWidth={2.5} />
+              </span>
+              <div className="flex flex-col">
+                <span className="text-white font-bold text-sm">ورود / عضویت</span>
+                <span className="text-brand-m_khonsa text-xs">برای پیگیری سفارشات وارد شوید</span>
+              </div>
+            </>
+          )}
+          <ChevronLeft size={16} className="text-brand-m_khonsa mr-auto shrink-0" />
+        </Link>
+
         <div className="flex-1 overflow-y-auto flex flex-col">
           <nav className="flex flex-col text-right w-full">
             <Link
@@ -315,23 +334,6 @@ export default function MobileMenu({ shopItems, blogItems }: MobileMenuProps) {
             </div>
             <div className="border-t border-[#23252b]" />
           </nav>
-        </div>
-
-        <div className="p-5 border-t border-brand-surface bg-[#111215] shrink-0">
-          <Link
-            href="/cart"
-            onClick={closeMenu}
-            className="flex items-center justify-center gap-2.5 w-full bg-brand-surface hover:bg-brand-surface_hover text-white py-3 rounded-md text-sm font-bold border border-white/5 transition-colors"
-            aria-label={`سبد خرید — ${cartCount} آیتم`}
-          >
-            <ShoppingCart size={18} strokeWidth={2.5} />
-            <span>سبد خرید شما</span>
-            {cartCount > 0 && (
-              <span className="bg-brand-blue text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Link>
         </div>
       </div>
     </div>
