@@ -7,8 +7,6 @@ import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import TicketReplyThread from "@/components/account/TicketReplyThread";
 
-export const dynamic = "force-dynamic";
-
 const TICKET_QUERY = `
   query GetMyTicket($id: Int!) {
     myTicket(id: $id) {

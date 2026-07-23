@@ -1,16 +1,30 @@
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
+  poweredByHeader: false,
+  output: 'standalone',
 
+  cacheComponents: true,
+
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+
+  images: {
     unoptimized: process.env.NODE_ENV !== 'production',
     formats: ['image/avif', 'image/webp'],
-
     minimumCacheTTL: 31536000,
     qualities: [70, 75, 80, 85, 90],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'arena2battle.com',
+        pathname: '/**',
       },
       {
         protocol: 'http',
@@ -38,4 +52,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

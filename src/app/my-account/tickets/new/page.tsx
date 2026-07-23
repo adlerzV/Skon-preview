@@ -6,8 +6,6 @@ import { fetchGraphQL } from "@/lib/graphql";
 import { CUSTOMER_ORDERS_LIGHT_QUERY } from "@/lib/graphql/auth";
 import NewTicketForm from "@/components/account/NewTicketForm";
 
-export const dynamic = "force-dynamic";
-
 export default async function NewTicketPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/my-account");

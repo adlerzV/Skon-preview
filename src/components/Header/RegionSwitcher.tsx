@@ -54,6 +54,7 @@ export default function RegionSwitcher({ regions, initialRegion }: RegionSwitche
           alt="Arena2Battle"
           width={90}
           height={36}
+          style={{ width: "auto" }}
           className="h-9 w-auto object-contain opacity-90"
         />
       </Link>
