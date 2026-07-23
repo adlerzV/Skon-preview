@@ -6,8 +6,6 @@ import { fetchGraphQL } from "@/lib/graphql";
 import { MY_REVIEWS_QUERY } from "@/lib/graphql/auth";
 import MyReviewsList from "@/components/account/MyReviewsList";
 
-export const dynamic = "force-dynamic";
-
 export default async function MyReviewsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/my-account");

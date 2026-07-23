@@ -4,8 +4,6 @@ import { getAuthToken, getCurrentUser } from "@/lib/auth/session";
 import { fetchGraphQL } from "@/lib/graphql";
 import TicketsPaginated from "@/components/account/TicketsPaginated";
 
-export const dynamic = "force-dynamic";
-
 const TICKETS_QUERY = `
   query GetMyTickets($after: String) {
     myTickets(first: 20, after: $after) {

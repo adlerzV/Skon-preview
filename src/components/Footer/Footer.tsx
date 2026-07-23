@@ -39,6 +39,7 @@ return (
               alt="Arena2Battle"
               width={110}
               height={40}
+              style={{ width: "auto" }}
               className="h-9 w-auto object-contain"
             />
             <p className="text-xs text-brand-m_khonsa leading-relaxed max-w-[220px]">

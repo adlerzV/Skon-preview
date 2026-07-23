@@ -6,8 +6,6 @@ import AvatarPicker from "@/components/account/AvatarPicker";
 import ProfileEditForm from "@/components/account/ProfileEditForm";
 import SessionsList from "@/components/account/SessionsList";
 
-export const dynamic = "force-dynamic";
-
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/my-account");

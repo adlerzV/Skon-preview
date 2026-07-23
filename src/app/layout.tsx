@@ -10,6 +10,7 @@ import TopLoader from "@/components/ui/TopLoader";
 const yekanFont = localFont({
   src: "./fonts/Yekan.woff",
   variable: "--font-yekan",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -19,16 +20,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fa" dir="rtl">
+    <html lang="fa" dir="rtl" data-scroll-behavior="smooth">
       <body className={`${yekanFont.variable} font-sans antialiased`}>
         <Suspense fallback={null}>
           <TopLoader />
         </Suspense>
         <ToastProvider>
-          <CartProvider>
-            <AuthRefresher />
-            {children}
-          </CartProvider>
+          <Suspense fallback={null}>
+            <CartProvider>
+              <AuthRefresher />
+              {children}
+            </CartProvider>
+          </Suspense>
         </ToastProvider>
       </body>
     </html>

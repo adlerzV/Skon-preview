@@ -2,8 +2,6 @@ import DashboardShell from "@/components/account/DashboardShell";
 import MobileBottomNav from "@/components/Header/MobileBottomNav";
 import { getCurrentUser } from "@/lib/auth/session";
 
-export const dynamic = "force-dynamic";
-
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
 

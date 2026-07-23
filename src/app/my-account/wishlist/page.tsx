@@ -3,8 +3,6 @@ import { getAuthToken, getCurrentUser } from "@/lib/auth/session";
 import { getWishlistProductIds, getProductsByIds } from "@/lib/graphql";
 import WishlistGrid from "@/components/account/WishlistGrid";
 
-export const dynamic = "force-dynamic";
-
 export default async function WishlistPage() {
   const user = await getCurrentUser();
   if (!user) return null;
