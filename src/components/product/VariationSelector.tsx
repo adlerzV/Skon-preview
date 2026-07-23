@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { VariationCard } from "@/lib/graphql";
 import { PriceDisplay } from "./PriceDisplay";
 
@@ -149,9 +150,11 @@ export default function VariationSelector({
                     }`}
                   >
                     {opt.flagUrl && (
-                      <img
+                      <Image
                         src={opt.flagUrl}
                         alt=""
+                        width={32}
+                        height={24}
                         className={`w-8 h-6 object-cover rounded-sm shrink-0 ${!state.available ? "opacity-20" : ""}`}
                       />
                     )}

@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true, 
-    
+
+    unoptimized: process.env.NODE_ENV !== 'production',
+    formats: ['image/avif', 'image/webp'],
+
     minimumCacheTTL: 31536000,
     qualities: [70, 75, 80, 85, 90],
     remotePatterns: [
@@ -16,6 +18,23 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/avatars/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ];
   },
 };
 
