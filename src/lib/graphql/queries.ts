@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { fetchGraphQL } from "./client";
 import { formatProducts, sanitizeHtml } from "./utils";
 import { resolveAvatarUrl } from "@/lib/avatars";
@@ -36,47 +37,64 @@ function safeHeroTabUrls(tabs: HeroTabItem[]): HeroTabItem[] {
 }
 
 export async function getHeaderCategories() {
-  const data = await fetchGraphQL(
-    `
-      ${CATEGORY_BASIC_FIELDS}
-      query GetHeaderCategories {
-        productCategories(where: { hideEmpty: true, parent: 0 }, first: 15) {
-          nodes { ...CategoryBasicFields }
-        }
-      }
-    `,
-    {},
-    ["header-data"]
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          ${CATEGORY_BASIC_FIELDS}
+          query GetHeaderCategories {
+            productCategories(where: { hideEmpty: true, parent: 0 }, first: 15) {
+              nodes { ...CategoryBasicFields }
+            }
+          }
+        `,
+        {},
+        ["header-data"]
+      );
+
+      const nodes: HeaderCategoryNode[] = data?.productCategories?.nodes ?? [];
+      return nodes
+        .filter((cat) => !["home", "uncategorized"].includes(cat.slug) && cat.image?.sourceUrl)
+        .map((cat) => ({
+          title: cat.name,
+          img: cat.image!.sourceUrl,
+          link: `/${cat.slug}`,
+        }));
+    },
+    ["header-categories"],
+    { tags: ["header-data"], revalidate: false }
   );
 
-  const nodes: HeaderCategoryNode[] = data?.productCategories?.nodes ?? [];
-  return nodes
-    .filter((cat) => !["home", "uncategorized"].includes(cat.slug) && cat.image?.sourceUrl)
-    .map((cat) => ({
-      title: cat.name,
-      img: cat.image!.sourceUrl,
-      link: `/${cat.slug}`,
-    }));
+  return cached();
 }
 
 export async function getProducts(categorySlug?: string, activeRegion: string = "eu") {
   const tags = categorySlug ? ["products", `category-${categorySlug}`] : ["products"];
-  const data = await fetchGraphQL(
-    `
-      ${PRODUCT_CARD_FIELDS}
-      query GetProducts($categoryIn: [String], $regionSlug: String) {
-        products(first: 12, where: { categoryIn: $categoryIn, status: "PUBLISH", regionSlug: $regionSlug }) {
-          nodes { ...ProductCardFields }
-        }
-      }
-    `,
-    categorySlug ? { categoryIn: [categorySlug], regionSlug: activeRegion } : { regionSlug: activeRegion },
-    tags
+
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          ${PRODUCT_CARD_FIELDS}
+          query GetProducts($categoryIn: [String], $regionSlug: String) {
+            products(first: 12, where: { categoryIn: $categoryIn, status: "PUBLISH", regionSlug: $regionSlug }) {
+              nodes { ...ProductCardFields }
+            }
+          }
+        `,
+        categorySlug ? { categoryIn: [categorySlug], regionSlug: activeRegion } : { regionSlug: activeRegion },
+        tags
+      );
+
+      return formatProducts(data?.products?.nodes ?? [], true, activeRegion).filter(
+        (p) => p.isAvailableInRegion !== false
+      );
+    },
+    ["get-products", categorySlug ?? "all", activeRegion],
+    { tags, revalidate: false }
   );
 
-  return formatProducts(data?.products?.nodes ?? [], true, activeRegion).filter(
-    (p) => p.isAvailableInRegion !== false
-  );
+  return cached();
 }
 
 export async function getProductsByIds(ids: number[], activeRegion: string = "eu"): Promise<ProductNode[]> {
@@ -102,175 +120,207 @@ export async function getProductsByIds(ids: number[], activeRegion: string = "eu
 export async function getCategoryArchive(slug: string, activeRegion: string = "eu") {
   if (!slug) return null;
 
-  const [categoryData, bannersData] = await Promise.all([
-    fetchGraphQL(
-      `
-        ${CATEGORY_BASIC_FIELDS}
-        ${PRODUCT_CARD_FIELDS}
-        query GetCategoryProducts($id: ID!, $categoryIn: [String], $regionSlug: String) {
-          productCategory(id: $id, idType: SLUG) {
-            ...CategoryBasicFields
-            children(where: { hideEmpty: true }) {
-              nodes { id databaseId name slug }
+  const cached = unstable_cache(
+    async () => {
+      const [categoryData, bannersData] = await Promise.all([
+        fetchGraphQL(
+          `
+            ${CATEGORY_BASIC_FIELDS}
+            ${PRODUCT_CARD_FIELDS}
+            query GetCategoryProducts($id: ID!, $categoryIn: [String], $regionSlug: String) {
+              productCategory(id: $id, idType: SLUG) {
+                ...CategoryBasicFields
+                children(where: { hideEmpty: true }) {
+                  nodes { id databaseId name slug }
+                }
+              }
+              products(first: 100, where: { categoryIn: $categoryIn, status: "PUBLISH", regionSlug: $regionSlug }) {
+                nodes { ...ProductCardFields }
+              }
             }
-          }
-          products(first: 100, where: { categoryIn: $categoryIn, status: "PUBLISH", regionSlug: $regionSlug }) {
-            nodes { ...ProductCardFields }
-          }
-        }
-      `,
-      { id: slug, categoryIn: [slug], regionSlug: activeRegion },
-      ["products", `category-${slug}`]
-    ),
-    fetchGraphQL(
-      `
-        ${BANNER_FIELDS}
-        query GetCategoryBanners($id: ID!) {
-          productCategory(id: $id, idType: SLUG) {
-            banners { ...BannerFields }
-          }
-        }
-      `,
-      { id: slug },
-      ["banners", `banners-${slug}`]
-    ),
-  ]);
+          `,
+          { id: slug, categoryIn: [slug], regionSlug: activeRegion },
+          ["products", `category-${slug}`]
+        ),
+        fetchGraphQL(
+          `
+            ${BANNER_FIELDS}
+            query GetCategoryBanners($id: ID!) {
+              productCategory(id: $id, idType: SLUG) {
+                banners { ...BannerFields }
+              }
+            }
+          `,
+          { id: slug },
+          ["banners", `banners-${slug}`]
+        ),
+      ]);
 
-  if (categoryData === null) {
-    throw new Error(`دریافت اطلاعات دسته‌بندی «${slug}» با خطا مواجه شد`);
-  }
+      if (categoryData === null) {
+        throw new Error(`دریافت اطلاعات دسته‌بندی «${slug}» با خطا مواجه شد`);
+      }
 
-  if (!categoryData?.productCategory) return null;
+      if (!categoryData?.productCategory) return null;
 
-  return {
-    ...categoryData.productCategory,
-    banners: safeBannerUrls(bannersData?.productCategory?.banners ?? []),
-    products: {
-      nodes: formatProducts(categoryData.products?.nodes ?? [], true, activeRegion).filter(
-        (p) => p.isAvailableInRegion !== false
-      ),
+      return {
+        ...categoryData.productCategory,
+        banners: safeBannerUrls(bannersData?.productCategory?.banners ?? []),
+        products: {
+          nodes: formatProducts(categoryData.products?.nodes ?? [], true, activeRegion).filter(
+            (p) => p.isAvailableInRegion !== false
+          ),
+        },
+      };
     },
-  };
+    ["category-archive", slug, activeRegion],
+    { tags: ["products", `category-${slug}`, "banners", `banners-${slug}`], revalidate: false }
+  );
+
+  return cached();
 }
 
 export async function getHomePageData(activeRegion: string = "eu") {
-  const data = await fetchGraphQL(
-    `
-      ${PRODUCT_CARD_FIELDS}
-      ${BANNER_FIELDS}
-      ${HERO_TAB_FIELDS}
-      query GetHomePage($regionSlug: String) {
-        homeBanners: productCategory(id: "home", idType: SLUG) {
-          banners { ...BannerFields }
-          heroTabs { ...HeroTabFields }
-        }
-        featuredProducts: products(first: 12, where: { featured: true, status: "PUBLISH", regionSlug: $regionSlug }) {
-          nodes { ...ProductCardFields }
-        }
-        latestProducts: products(first: 10, where: { status: "PUBLISH", orderby: { field: DATE, order: DESC }, regionSlug: $regionSlug }) {
-          nodes { ...ProductCardFields }
-        }
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          ${PRODUCT_CARD_FIELDS}
+          ${BANNER_FIELDS}
+          ${HERO_TAB_FIELDS}
+          query GetHomePage($regionSlug: String) {
+            homeBanners: productCategory(id: "home", idType: SLUG) {
+              banners { ...BannerFields }
+              heroTabs { ...HeroTabFields }
+            }
+            featuredProducts: products(first: 12, where: { featured: true, status: "PUBLISH", regionSlug: $regionSlug }) {
+              nodes { ...ProductCardFields }
+            }
+            latestProducts: products(first: 10, where: { status: "PUBLISH", orderby: { field: DATE, order: DESC }, regionSlug: $regionSlug }) {
+              nodes { ...ProductCardFields }
+            }
+          }
+        `,
+        { regionSlug: activeRegion },
+        ["products", "banners", "home"],
+        "force-cache"
+      );
+
+      if (!data) {
+        return { banners: [], heroTabs: [] as HeroTabItem[], featured: [] as ProductNode[], latest: [] as ProductNode[] };
       }
-    `,
-    { regionSlug: activeRegion },
-    ["products", "banners", "home"],
-    "force-cache"
+
+      return {
+        banners: safeBannerUrls(data.homeBanners?.banners ?? []),
+        heroTabs: safeHeroTabUrls(data.homeBanners?.heroTabs ?? []),
+        featured: formatProducts(data.featuredProducts?.nodes ?? [], true, activeRegion).filter(
+          (p) => p.isAvailableInRegion !== false
+        ),
+        latest: formatProducts(data.latestProducts?.nodes ?? [], true, activeRegion).filter(
+          (p) => p.isAvailableInRegion !== false
+        ),
+      };
+    },
+    ["home-page-data", activeRegion],
+    { tags: ["products", "banners", "home"], revalidate: false }
   );
 
-  if (!data) {
-    return { banners: [], heroTabs: [] as HeroTabItem[], featured: [] as ProductNode[], latest: [] as ProductNode[] };
-  }
-
-  return {
-    banners: safeBannerUrls(data.homeBanners?.banners ?? []),
-    heroTabs: safeHeroTabUrls(data.homeBanners?.heroTabs ?? []),
-    featured: formatProducts(data.featuredProducts?.nodes ?? [], true, activeRegion).filter(
-      (p) => p.isAvailableInRegion !== false
-    ),
-    latest: formatProducts(data.latestProducts?.nodes ?? [], true, activeRegion).filter(
-      (p) => p.isAvailableInRegion !== false
-    ),
-  };
+  return cached();
 }
 
 export async function getHeaderBlogCategories() {
-  const data = await fetchGraphQL(
-    `
-      query GetBlogCategories {
-        categories(where: { hideEmpty: true, parent: 0 }, first: 15) {
-          nodes {
-            name
-            slug
-            categoryImage { sourceUrl(size: "thumbnail") }
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          query GetBlogCategories {
+            categories(where: { hideEmpty: true, parent: 0 }, first: 15) {
+              nodes {
+                name
+                slug
+                categoryImage { sourceUrl(size: "thumbnail") }
+              }
+            }
           }
-        }
-      }
-    `,
-    {},
-    ["header-data"]
+        `,
+        {},
+        ["header-data"]
+      );
+
+      const nodes: HeaderCategoryNode[] = data?.categories?.nodes ?? [];
+      return nodes
+        .filter((cat) => cat.categoryImage?.sourceUrl)
+        .map((cat) => ({
+          title: cat.name,
+          img: cat.categoryImage!.sourceUrl,
+          link: `/blog/${cat.slug}`,
+        }));
+    },
+    ["header-blog-categories"],
+    { tags: ["header-data"], revalidate: false }
   );
 
-  const nodes: HeaderCategoryNode[] = data?.categories?.nodes ?? [];
-  return nodes
-    .filter((cat) => cat.categoryImage?.sourceUrl)
-    .map((cat) => ({
-      title: cat.name,
-      img: cat.categoryImage!.sourceUrl,
-      link: `/blog/${cat.slug}`,
-    }));
+  return cached();
 }
 
 export async function getPostDetail(slug: string) {
   if (!slug) return null;
 
-  const data = await fetchGraphQL(
-    `
-      query GetPostDetail($id: ID!) {
-        post(id: $id, idType: SLUG) {
-          databaseId
-          title
-          content
-          excerpt
-          date
-          commentsCount
-          averageRating
-          ratingCount
-          featuredImage { node { sourceUrl(size: LARGE) } }
-          categories {
-            nodes {
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          query GetPostDetail($id: ID!) {
+            post(id: $id, idType: SLUG) {
               databaseId
-              name
-              slug
-              categoryImage { sourceUrl(size: "thumbnail") }
-              parent { node { databaseId name slug } }
+              title
+              content
+              excerpt
+              date
+              commentsCount
+              averageRating
+              ratingCount
+              featuredImage { node { sourceUrl(size: LARGE) } }
+              categories {
+                nodes {
+                  databaseId
+                  name
+                  slug
+                  categoryImage { sourceUrl(size: "thumbnail") }
+                  parent { node { databaseId name slug } }
+                }
+              }
+              tags {
+                nodes { databaseId name slug }
+              }
+              author { node { name } }
             }
           }
-          tags {
-            nodes { databaseId name slug }
-          }
-          author { node { name } }
-        }
+        `,
+        { id: slug },
+        [`post-${slug}`]
+      );
+
+      if (data === null) {
+        throw new Error(`دریافت اطلاعات مقاله «${slug}» با خطا مواجه شد`);
       }
-    `,
-    { id: slug },
-    [`post-${slug}`]
+
+      if (!data.post) return null;
+
+      const sanitized = sanitizeHtml(data.post.content) ?? "";
+      const { html, toc } = extractTocAndInjectIds(sanitized);
+
+      return {
+        ...data.post,
+        content: html,
+        toc,
+        excerpt: sanitizeHtml(data.post.excerpt) ?? "",
+      };
+    },
+    ["post-detail", slug],
+    { tags: [`post-${slug}`], revalidate: false }
   );
 
-  if (data === null) {
-    throw new Error(`دریافت اطلاعات مقاله «${slug}» با خطا مواجه شد`);
-  }
-
-  if (!data.post) return null;
-
-  const sanitized = sanitizeHtml(data.post.content) ?? "";
-  const { html, toc } = extractTocAndInjectIds(sanitized);
-
-  return {
-    ...data.post,
-    content: html,
-    toc,
-    excerpt: sanitizeHtml(data.post.excerpt) ?? "",
-  };
+  return cached();
 }
 
 export async function getRelatedPosts(params: {
@@ -283,192 +333,237 @@ export async function getRelatedPosts(params: {
 }) {
   const { categoryId, categorySlug, parentCategoryId, parentCategorySlug, excludeId, first = 6 } = params;
 
-  const primary = await fetchGraphQL(
-    `
-      query GetRelatedPosts($categoryIn: [ID], $notIn: [ID], $first: Int) {
-        posts(first: $first, where: { categoryIn: $categoryIn, notIn: $notIn, orderby: { field: DATE, order: DESC } }) {
-          nodes {
-            id databaseId title slug date
-            featuredImage { node { sourceUrl(size: MEDIUM) } }
-            categories(first: 1) { nodes { slug } }
-          }
-        }
-      }
-    `,
-    { categoryIn: [categoryId], notIn: [excludeId], first },
-    [`blog-category-${categorySlug}`]
-  );
+  const tags = [
+    `blog-category-${categorySlug}`,
+    ...(parentCategorySlug ? [`blog-category-${parentCategorySlug}`] : []),
+  ];
 
-  let posts = primary?.posts?.nodes ?? [];
-
-  if (posts.length < first && parentCategoryId && parentCategorySlug) {
-    const already = [excludeId, ...posts.map((p: any) => p.databaseId)];
-    const secondary = await fetchGraphQL(
-      `
-        query GetMoreRelatedPosts($categoryIn: [ID], $notIn: [ID], $first: Int) {
-          posts(first: $first, where: { categoryIn: $categoryIn, notIn: $notIn, orderby: { field: DATE, order: DESC } }) {
-            nodes {
-              id databaseId title slug date
-              featuredImage { node { sourceUrl(size: MEDIUM) } }
-              categories(first: 1) { nodes { slug } }
+  const cached = unstable_cache(
+    async () => {
+      const primary = await fetchGraphQL(
+        `
+          query GetRelatedPosts($categoryIn: [ID], $notIn: [ID], $first: Int) {
+            posts(first: $first, where: { categoryIn: $categoryIn, notIn: $notIn, orderby: { field: DATE, order: DESC } }) {
+              nodes {
+                id databaseId title slug date
+                featuredImage { node { sourceUrl(size: MEDIUM) } }
+                categories(first: 1) { nodes { slug } }
+              }
             }
           }
-        }
-      `,
-      { categoryIn: [parentCategoryId], notIn: already, first: first - posts.length },
-      [`blog-category-${parentCategorySlug}`]
-    );
-    posts = [...posts, ...(secondary?.posts?.nodes ?? [])];
-  }
+        `,
+        { categoryIn: [categoryId], notIn: [excludeId], first },
+        [`blog-category-${categorySlug}`]
+      );
 
-  return posts;
+      let posts = primary?.posts?.nodes ?? [];
+
+      if (posts.length < first && parentCategoryId && parentCategorySlug) {
+        const already = [excludeId, ...posts.map((p: any) => p.databaseId)];
+        const secondary = await fetchGraphQL(
+          `
+            query GetMoreRelatedPosts($categoryIn: [ID], $notIn: [ID], $first: Int) {
+              posts(first: $first, where: { categoryIn: $categoryIn, notIn: $notIn, orderby: { field: DATE, order: DESC } }) {
+                nodes {
+                  id databaseId title slug date
+                  featuredImage { node { sourceUrl(size: MEDIUM) } }
+                  categories(first: 1) { nodes { slug } }
+                }
+              }
+            }
+          `,
+          { categoryIn: [parentCategoryId], notIn: already, first: first - posts.length },
+          [`blog-category-${parentCategorySlug}`]
+        );
+        posts = [...posts, ...(secondary?.posts?.nodes ?? [])];
+      }
+
+      return posts;
+    },
+    ["related-posts", String(categoryId), String(parentCategoryId ?? ""), String(excludeId), String(first)],
+    { tags, revalidate: false }
+  );
+
+  return cached();
 }
 
 export async function getProductDetail(slug: string, activeRegion: string = "eu") {
   if (!slug) return null;
 
-  const data = await fetchGraphQL(
-    `
-      ${PRODUCT_CARD_FIELDS}
-      query GetProductDetail($id: ID!) {
-        product(id: $id, idType: SLUG) {
-          ...ProductCardFields
-          imageLarge: image { sourceUrl(size: LARGE) }
-          description
-          secondaryGallery { description imageUrl }
-          galleryImages { nodes { sourceUrl(size: LARGE) } }
-          attributes { nodes { name options } }
-          averageRating
-          reviewCount
-          reviews(first: 20) {
-            pageInfo { hasNextPage endCursor }
-            nodes {
-              id
-              databaseId
-              parentDatabaseId
-              isStaffReply
-              content
-              date
-              author {
-                node {
-                  name
-                  ... on User {
-                    avatarUrl
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          ${PRODUCT_CARD_FIELDS}
+          query GetProductDetail($id: ID!) {
+            product(id: $id, idType: SLUG) {
+              ...ProductCardFields
+              imageLarge: image { sourceUrl(size: LARGE) }
+              description
+              secondaryGallery { description imageUrl }
+              galleryImages { nodes { sourceUrl(size: LARGE) } }
+              attributes { nodes { name options } }
+              averageRating
+              reviewCount
+              reviews(first: 20) {
+                pageInfo { hasNextPage endCursor }
+                nodes {
+                  id
+                  databaseId
+                  parentDatabaseId
+                  isStaffReply
+                  content
+                  date
+                  author {
+                    node {
+                      name
+                      ... on User {
+                        avatarUrl
+                      }
+                    }
                   }
                 }
               }
             }
           }
-        }
+        `,
+        { id: slug },
+        [`product-${slug}`]
+      );
+
+      if (data === null) {
+        throw new Error(`دریافت اطلاعات محصول «${slug}» با خطا مواجه شد`);
       }
-    `,
-    { id: slug },
-    [`product-${slug}`]
+
+      if (!data.product) return null;
+
+      const formatted = formatProducts([data.product], false, activeRegion);
+      const product = formatted[0] ?? null;
+      if (!product) return null;
+
+      if (product.reviews?.nodes && Array.isArray(product.reviews.nodes)) {
+        product.reviews.nodes = await Promise.all(
+          product.reviews.nodes.map(async (r: any) => {
+            const authorNode = r.author?.node;
+            const originalAvatar = authorNode?.avatarUrl || null;
+
+            return {
+              ...r,
+              author: {
+                ...r.author,
+                node: {
+                  ...authorNode,
+                  avatarUrl: await resolveAvatarUrl(originalAvatar),
+                },
+              },
+            };
+          })
+        );
+      }
+
+      return product;
+    },
+    ["product-detail", slug, activeRegion],
+    { tags: [`product-${slug}`], revalidate: false }
   );
 
-  if (data === null) {
-    throw new Error(`دریافت اطلاعات محصول «${slug}» با خطا مواجه شد`);
-  }
-
-  if (!data.product) return null;
-
-  const formatted = formatProducts([data.product], false, activeRegion);
-  const product = formatted[0] ?? null;
-  if (!product) return null;
-
-  if (product.reviews?.nodes && Array.isArray(product.reviews.nodes)) {
-    product.reviews.nodes = await Promise.all(
-      product.reviews.nodes.map(async (r: any) => {
-        const authorNode = r.author?.node;
-        const originalAvatar = authorNode?.avatarUrl || null;
-
-        return {
-          ...r,
-          author: {
-            ...r.author,
-            node: {
-              ...authorNode,
-              avatarUrl: await resolveAvatarUrl(originalAvatar),
-            },
-          },
-        };
-      })
-    );
-  }
-
-  return product;
+  return cached();
 }
 
 export async function getRegions() {
-  const data = await fetchGraphQL(
-    `
-      query GetRegions {
-        allPaRegionShop(first: 10) {
-          nodes { name title slug flagUrl }
-        }
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          query GetRegions {
+            allPaRegionShop(first: 10) {
+              nodes { name title slug flagUrl }
+            }
+          }
+        `,
+        {},
+        ["regions"]
+      );
+
+      if (!data?.allPaRegionShop?.nodes) {
+        console.error("getRegions: no data returned");
+        return [];
       }
-    `,
-    {},
-    ["regions"]
+
+      return data.allPaRegionShop.nodes.map((r: Record<string, string>) => ({
+        name: r.name || r.title,
+        slug: r.slug,
+        flagUrl: r.flagUrl || undefined,
+      }));
+    },
+    ["regions"],
+    { tags: ["regions"], revalidate: false }
   );
 
-  if (!data?.allPaRegionShop?.nodes) {
-    console.error("getRegions: no data returned");
-    return [];
-  }
-
-  return data.allPaRegionShop.nodes.map((r: Record<string, string>) => ({
-    name: r.name || r.title,
-    slug: r.slug,
-    flagUrl: r.flagUrl || undefined,
-  }));
+  return cached();
 }
 
 export async function getBlogCategoryArchive(slug: string) {
   if (!slug) return null;
 
-  const data = await fetchGraphQL(
-    `
-      ${CATEGORY_WITH_CHILDREN_FIELDS}
-      query GetBlogCategoryWithChildren($id: ID!) {
-        category(id: $id, idType: SLUG) {
-          ...CategoryWithChildrenFields
-        }
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          ${CATEGORY_WITH_CHILDREN_FIELDS}
+          query GetBlogCategoryWithChildren($id: ID!) {
+            category(id: $id, idType: SLUG) {
+              ...CategoryWithChildrenFields
+            }
+          }
+        `,
+        { id: slug },
+        [`blog-category-${slug}`]
+      );
+
+      if (data === null) {
+        throw new Error(`دریافت اطلاعات دسته‌بندی بلاگ «${slug}» با خطا مواجه شد`);
       }
-    `,
-    { id: slug },
-    [`blog-category-${slug}`]
+
+      return data?.category ?? null;
+    },
+    ["blog-category-archive", slug],
+    { tags: [`blog-category-${slug}`], revalidate: false }
   );
 
-  if (data === null) {
-    throw new Error(`دریافت اطلاعات دسته‌بندی بلاگ «${slug}» با خطا مواجه شد`);
-  }
-
-  return data?.category ?? null;
+  return cached();
 }
 
 export async function getBlogTagArchive(slug: string) {
   if (!slug) return null;
 
-  const data = await fetchGraphQL(
-    `
-      query GetBlogTag($id: ID!) {
-        tag(id: $id, idType: SLUG) {
-          databaseId
-          name
-          slug
-        }
+  const cached = unstable_cache(
+    async () => {
+      const data = await fetchGraphQL(
+        `
+          query GetBlogTag($id: ID!) {
+            tag(id: $id, idType: SLUG) {
+              databaseId
+              name
+              slug
+            }
+          }
+        `,
+        { id: slug },
+        [`blog-tag-${slug}`]
+      );
+
+      if (data === null) {
+        throw new Error(`دریافت اطلاعات تگ «${slug}» با خطا مواجه شد`);
       }
-    `,
-    { id: slug },
-    [`blog-tag-${slug}`]
+
+      return data?.tag ?? null;
+    },
+    ["blog-tag-archive", slug],
+    { tags: [`blog-tag-${slug}`], revalidate: false }
   );
 
-  if (data === null) {
-    throw new Error(`دریافت اطلاعات تگ «${slug}» با خطا مواجه شد`);
-  }
-
-  return data?.tag ?? null;
+  return cached();
 }
 
 export async function getAllBlogPosts(options: {
